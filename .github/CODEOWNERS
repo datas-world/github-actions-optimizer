@@ -1,0 +1,37 @@
+# This file defines the default owners for everything in the repository.
+# The CODEOWNERS file is used to define individuals or teams that are responsible
+# for code in a repository.
+
+# Global owners - these users will be requested for review when anyone opens a pull request
+* @torsknod2 @torsknod
+
+# Documentation files
+*.md @torsknod2 @torsknod
+docs/ @torsknod2 @torsknod
+
+# Configuration files
+*.yml @torsknod2 @torsknod
+*.yaml @torsknod2 @torsknod
+*.toml @torsknod2 @torsknod
+*.json @torsknod2 @torsknod
+.github/ @torsknod2 @torsknod
+.vscode/ @torsknod2 @torsknod
+
+# Python source code
+*.py @torsknod2 @torsknod
+gh_actions_optimizer/ @torsknod2 @torsknod
+tests/ @torsknod2 @torsknod
+
+# GitHub CLI extension files
+extension.yml @torsknod2 @torsknod
+gh-actions-optimizer @torsknod2 @torsknod
+
+# CI/CD and workflows
+.github/workflows/ @torsknod2 @torsknod
+.github/dependabot.yml @torsknod2 @torsknod
+.pre-commit-config.yaml @torsknod2 @torsknod
+
+# License and legal files
+LICENSE @torsknod2 @torsknod
+LICENSE_COMPATIBILITY.md @torsknod2 @torsknod
+SECURITY.md @torsknod2 @torsknod

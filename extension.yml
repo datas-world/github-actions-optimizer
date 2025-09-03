@@ -1,0 +1,5 @@
+name: actions-optimizer
+owner: datas-world
+host: github.com
+tag: v0.1.0-dev
+description: Optimize GitHub Actions workflows for cost, performance, and security
