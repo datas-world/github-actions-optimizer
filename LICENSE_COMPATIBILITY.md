@@ -30,7 +30,7 @@ All included under Python Software Foundation License (PSF License) - **GPLv3 Co
 
 ### GPLv3 Compatibility Rules
 - ✅ MIT License: Fully compatible, can be combined
-- ✅ BSD License: Fully compatible, can be combined  
+- ✅ BSD License: Fully compatible, can be combined
 - ✅ Apache-2.0: Compatible when proper attribution maintained
 - ✅ LGPL-3.0: Compatible for linking (PyGithub case)
 - ✅ MPL-2.0: Compatible, copyleft applies only to modified MPL files
