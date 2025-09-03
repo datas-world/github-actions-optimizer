@@ -65,12 +65,14 @@ Thumbs.db
 
 # Application specific
 *.json
-*.yaml
-*.yml
-*.csv
+data/*.yaml
+data/*.yml
+data/*.csv
 !requirements.txt
 !pyproject.toml
 !.pre-commit-config.yaml
+!.github/**/*.yml
+!.github/**/*.yaml
 
 # Cache directories
 .cache/
