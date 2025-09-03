@@ -25,19 +25,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.13'
           cache: 'pip'
 
       - name: Install system dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@9f7a885e33ff6f8166b600e3e74a981ec11b92c3 # latest
         with:
           packages: jq
           version: 1.0
@@ -49,7 +49,7 @@ jobs:
           pip install -e .[dev]
 
       - name: Cache pre-commit hooks
-        uses: actions/cache@v4
+        uses: actions/cache@638ed79f9dc94c1de1baef91bcab5edaa19451f4 # v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -69,12 +69,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -89,7 +89,7 @@ jobs:
           pre-commit autoupdate
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@18e469570b1cf0dfc11d60ec121099f8ff3e617a # v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'ci: update pre-commit hooks'
