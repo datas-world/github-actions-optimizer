@@ -37,7 +37,7 @@ jobs:
           cache: 'pip'
 
       - name: Install system dependencies
-        uses: awalsh128/cache-apt-pkgs-action@9f7a885e33ff6f8166b600e3e74a981ec11b92c3 # latest
+        uses: awalsh128/cache-apt-pkgs-action@2c09a5e66da6c8016428a2172bd76e5e4f14bb17 # v1.5.3
         with:
           packages: jq
           version: 1.0
