@@ -57,7 +57,7 @@ jobs:
           pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest
 
       - name: Install system dependencies
-        uses: awalsh128/cache-apt-pkgs-action@44c33b32f808cae6a59dcc81e2a2c6132f3d5003 # latest
+        uses: awalsh128/cache-apt-pkgs-action@2c09a5e66da6c8016428a2172bd76e5e4f14bb17 # v1.5.3
         with:
           packages: act
           version: 1.0
