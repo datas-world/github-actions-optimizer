@@ -4,17 +4,19 @@ import argparse
 import json
 from typing import Any
 
-from ..shared import log_info, log_success, Colors
+import yaml
+
+from ..shared import Colors, log_info, log_success
 
 
 def cmd_security(args: argparse.Namespace) -> None:
     """Security audit of workflows and repository settings."""
+    from ..shared.data import generate_sample_security_issues
     from ..shared.github import (
+        download_workflow_content,
         get_repo_for_command,
         get_workflows,
-        download_workflow_content,
     )
-    from ..shared.data import generate_sample_security_issues
 
     repo = get_repo_for_command(args)
 
@@ -120,6 +122,23 @@ def cmd_security(args: argparse.Namespace) -> None:
             log_success(f"Security audit results saved to {args.output}")
         else:
             print(json.dumps(output, indent=2))
+    elif args.format == "yaml":
+        output = {
+            "repository": repo,
+            "security_audit": security_issues,
+            "recommendations": [
+                "Pin all third-party actions to specific commit SHAs",
+                "Use explicit permissions for all workflows",
+                "Avoid pull_request_target for untrusted code",
+                "Sanitize all user inputs in scripts",
+            ],
+        }
+        if args.output:
+            with open(args.output, "w") as f:
+                yaml.dump(output, f, default_flow_style=False)
+            log_success(f"Security audit results saved to {args.output}")
+        else:
+            print(yaml.dump(output, default_flow_style=False, allow_unicode=True))
     else:
         print(f"\n{Colors.BOLD}Security Audit Results for {repo}{Colors.NC}")
         print("=" * 60)

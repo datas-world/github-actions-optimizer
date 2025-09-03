@@ -1,39 +1,153 @@
 """CLI utilities for GitHub Actions Optimizer."""
 
 import argparse
+import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import TextIO
+
+from rich.console import Console
+from rich.text import Text
 
 
 class Colors:
-    """ANSI color codes for terminal output formatting."""
+    """Intelligent color handling with automatic terminal capability detection."""
 
-    RED = "\033[0;31m"
-    GREEN = "\033[0;32m"
-    YELLOW = "\033[1;33m"
-    BLUE = "\033[0;34m"
-    BOLD = "\033[1m"
-    NC = "\033[0m"  # No Color
+    def __init__(self) -> None:
+        """Initialize Colors with Rich-based terminal detection."""
+        # Create console instances for different output streams
+        self._console_stdout = Console(
+            file=sys.stdout,
+            force_terminal=self._should_force_color(),
+            no_color=self._should_disable_color(),
+            color_system="auto",  # Let Rich auto-detect capabilities
+        )
+
+        self._console_stderr = Console(
+            file=sys.stderr,
+            force_terminal=self._should_force_color(),
+            no_color=self._should_disable_color(),
+            color_system="auto",  # Let Rich auto-detect capabilities
+        )
+
+    def _should_force_color(self) -> bool:
+        """Check if color output should be forced."""
+        force_color = os.environ.get("FORCE_COLOR", "")
+        return force_color in ("1", "true", "True", "TRUE")
+
+    def _should_disable_color(self) -> bool:
+        """Check if color output should be disabled."""
+        no_color = os.environ.get("NO_COLOR", "")
+        force_color = os.environ.get("FORCE_COLOR", "")
+
+        # FORCE_COLOR=0 explicitly disables color
+        if force_color == "0":
+            return True
+        # NO_COLOR disables color unless FORCE_COLOR=1 is explicitly set
+        if no_color and force_color != "1":
+            return True
+        # Also check if not a TTY and no explicit force
+        if not sys.stderr.isatty() and force_color not in ("1", "true", "True", "TRUE"):
+            return True
+        return False
+
+    def get_console(self, file: TextIO = sys.stderr) -> Console:
+        """Get appropriate Console instance for the given file stream."""
+        if file == sys.stdout:
+            return self._console_stdout
+        return self._console_stderr
+
+    # Compatibility methods for existing code
+    def red(self, text: str) -> str:
+        """Get red-colored text if terminal supports it."""
+        if self._should_disable_color():
+            return text
+        return f"[red]{text}[/red]"
+
+    def green(self, text: str) -> str:
+        """Get green-colored text if terminal supports it."""
+        if self._should_disable_color():
+            return text
+        return f"[green]{text}[/green]"
+
+    def yellow(self, text: str) -> str:
+        """Get yellow-colored text if terminal supports it."""
+        if self._should_disable_color():
+            return text
+        return f"[yellow]{text}[/yellow]"
+
+    def blue(self, text: str) -> str:
+        """Get blue-colored text if terminal supports it."""
+        if self._should_disable_color():
+            return text
+        return f"[blue]{text}[/blue]"
+
+    def bold(self, text: str) -> str:
+        """Get bold text if terminal supports it."""
+        if self._should_disable_color():
+            return text
+        return f"[bold]{text}[/bold]"
+
+    # Legacy ANSI-style properties for backward compatibility
+    @property
+    def RED(self) -> str:
+        """Legacy red color code."""
+        return "" if self._should_disable_color() else "\033[0;31m"
+
+    @property
+    def GREEN(self) -> str:
+        """Legacy green color code."""
+        return "" if self._should_disable_color() else "\033[0;32m"
+
+    @property
+    def YELLOW(self) -> str:
+        """Legacy yellow color code."""
+        return "" if self._should_disable_color() else "\033[1;33m"
+
+    @property
+    def BLUE(self) -> str:
+        """Legacy blue color code."""
+        return "" if self._should_disable_color() else "\033[0;34m"
+
+    @property
+    def BOLD(self) -> str:
+        """Legacy bold code."""
+        return "" if self._should_disable_color() else "\033[1m"
+
+    @property
+    def NC(self) -> str:
+        """Legacy reset code."""
+        return "" if self._should_disable_color() else "\033[0m"
+
+
+# Create a singleton instance
+colors = Colors()
+
+# Backward compatibility - export the instance with the old name
+Colors = colors  # type: ignore[misc]
 
 
 def log_info(message: str) -> None:
-    """Log info message to stderr."""
-    print(f"{Colors.BLUE}[INFO]{Colors.NC} {message}", file=sys.stderr)
+    """Log info message to stderr using Rich console."""
+    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console.print(f"[blue][INFO][/blue] {message}", highlight=False)
 
 
 def log_warn(message: str) -> None:
-    """Log warning message to stderr."""
-    print(f"{Colors.YELLOW}[WARN]{Colors.NC} {message}", file=sys.stderr)
+    """Log warning message to stderr using Rich console."""
+    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console.print(f"[yellow][WARN][/yellow] {message}", highlight=False)
 
 
 def log_error(message: str) -> None:
-    """Log error message to stderr."""
-    print(f"{Colors.RED}[ERROR]{Colors.NC} {message}", file=sys.stderr)
+    """Log error message to stderr using Rich console."""
+    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console.print(f"[red][ERROR][/red] {message}", highlight=False)
 
 
 def log_success(message: str) -> None:
-    """Log success message to stderr."""
-    print(f"{Colors.GREEN}[SUCCESS]{Colors.NC} {message}", file=sys.stderr)
+    """Log success message to stderr using Rich console."""
+    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console.print(f"[green][SUCCESS][/green] {message}", highlight=False)
 
 
 def add_common_args(parser_obj: argparse.ArgumentParser, repo_required: bool = False) -> None:
