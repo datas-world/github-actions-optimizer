@@ -15,7 +15,7 @@ jobs:
   track-failures:
     name: Track Workflow Failures
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.event != 'pull_request_review' && github.event.workflow_run.event != 'pull_request_review_comment' && github.event.workflow_run.event != 'pull_request_target' }}
     timeout-minutes: 10
 
     steps:
@@ -39,11 +39,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_NAME: ${{ steps.workflow-details.outputs.workflow_name }}
         run: |
-          # Search for existing issues with the workflow failure label
+          # Search for existing issues with the workflow failure label for this specific workflow
           ISSUE_TITLE="Workflow Failure: ${WORKFLOW_NAME}"
           
-          # Use GitHub CLI to search for existing issues
-          EXISTING_ISSUE=$(gh issue list --label "workflow-failure" --state open --json number,title | jq -r ".[] | select(.title == \"${ISSUE_TITLE}\") | .number")
+          # Use GitHub CLI to search for existing issues specific to this workflow
+          EXISTING_ISSUE=$(gh issue list --label "workflow-failure" --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title | jq -r ".[] | select(.title == \"${ISSUE_TITLE}\") | .number")
           
           if [ -n "$EXISTING_ISSUE" ]; then
             echo "issue_exists=true" >> $GITHUB_OUTPUT
@@ -94,11 +94,11 @@ jobs:
 
           ---
 
-          **Note:** This issue was automatically created by the Workflow Failure Tracker.
+          **Note:** This issue was automatically created by the [Workflow Failure Tracker](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/.github/workflows/workflow-failure-tracker.yml).
 
           ### Failure History
 
-          1. **${CREATED_AT}** - [Run #${WORKFLOW_RUN_ID}](${WORKFLOW_URL}) on branch \`${HEAD_BRANCH}\`
+          1. **${CREATED_AT}** - [Run #${WORKFLOW_RUN_ID}](${WORKFLOW_URL}) on branch \`${HEAD_BRANCH}\` (${WORKFLOW_EVENT})
           EOF
 
           # Create the issue using GitHub CLI
@@ -119,24 +119,60 @@ jobs:
           WORKFLOW_RUN_ID: ${{ steps.workflow-details.outputs.workflow_run_id }}
           HEAD_SHA: ${{ steps.workflow-details.outputs.workflow_head_sha }}
           HEAD_BRANCH: ${{ steps.workflow-details.outputs.workflow_head_branch }}
+          WORKFLOW_EVENT: ${{ steps.workflow-details.outputs.workflow_event }}
           CREATED_AT: ${{ steps.workflow-details.outputs.workflow_created_at }}
         run: |
-          # Create comment body using heredoc
-          cat > comment_body.md << EOF
-          ## New Failure Occurrence
+          # Get current issue body
+          CURRENT_BODY=$(gh issue view ${ISSUE_NUMBER} --json body -q '.body')
+          
+          # Extract the failure history section and add new entry at the top
+          NEW_ENTRY="${CREATED_AT} - [Run #${WORKFLOW_RUN_ID}](${WORKFLOW_URL}) on branch \`${HEAD_BRANCH}\` (${WORKFLOW_EVENT})"
+          
+          # Update the issue body by inserting the new failure at the top of the history list
+          cat > updated_body.md << EOF
+          ## Workflow Failure Report
 
-          The **${WORKFLOW_NAME}** workflow failed again.
+          This issue tracks failures in the **${WORKFLOW_NAME}** workflow that are not related to specific PR changes and require attention.
 
-          **Details:**
-          - **Run:** [#${WORKFLOW_RUN_ID}](${WORKFLOW_URL})
+          ### Latest Failure Details
+
+          **Failed Run:** [Workflow Run #${WORKFLOW_RUN_ID}](${WORKFLOW_URL})
           - **Branch:** ${HEAD_BRANCH}
           - **Commit:** ${HEAD_SHA}
+          - **Event:** ${WORKFLOW_EVENT}
           - **Timestamp:** ${CREATED_AT}
 
-          Please review if this failure pattern indicates a recurring issue that needs investigation.
-          EOF
+          ### Investigation Checklist
 
-          # Add comment to existing issue
-          gh issue comment ${ISSUE_NUMBER} --body-file comment_body.md
+          - [ ] Review the failed workflow run logs
+          - [ ] Identify if this is a recurring issue
+          - [ ] Determine if this is related to infrastructure, dependencies, or code changes
+          - [ ] Check if similar failures occurred in other repositories
+          - [ ] Implement a fix or workaround
+
+          ### Proposed Solution
+
+          _To be updated as investigation progresses._
+
+          ---
+
+          **Note:** This issue was automatically created by the [Workflow Failure Tracker](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/.github/workflows/workflow-failure-tracker.yml).
+
+          ### Failure History
+
+          1. **${NEW_ENTRY}**
+          EOF
           
-          echo "Updated existing issue #${ISSUE_NUMBER} with new failure occurrence"
+          # Extract existing failure history from current body (excluding the first entry which we're updating)
+          echo "${CURRENT_BODY}" | sed -n '/### Failure History/,$ p' | tail -n +2 | grep -E '^[0-9]+\.' | tail -n +2 | while read -r line; do
+            # Increment numbering for existing entries
+            entry_num=$(echo "$line" | grep -oE '^[0-9]+')
+            new_num=$((entry_num + 1))
+            updated_line=$(echo "$line" | sed "s/^${entry_num}\./${new_num}./")
+            echo "${updated_line}" >> updated_body.md
+          done
+          
+          # Update the issue with the new body
+          gh issue edit ${ISSUE_NUMBER} --body-file updated_body.md
+          
+          echo "Updated existing issue #${ISSUE_NUMBER} with new failure at top of history list"

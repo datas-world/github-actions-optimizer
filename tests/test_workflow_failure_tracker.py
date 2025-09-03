@@ -2,6 +2,7 @@
 
 import yaml
 import pytest
+import re
 from pathlib import Path
 
 
@@ -17,7 +18,10 @@ class TestWorkflowFailureTracker:
 
     def test_workflow_triggers_on_correct_events(self, workflow_file):
         """Test that the workflow triggers on the correct events."""
-        # In YAML, 'on' becomes True when parsed by Python
+        # In YAML, 'on' is a reserved word in Python and becomes True when parsed by PyYAML
+        # This is documented in PyYAML's documentation and is a known behavior
+        # See: https://pyyaml.org/wiki/PyYAMLDocumentation
+        # Alternative approaches: use safe_load with custom constructor or check both keys
         assert True in workflow_file or "on" in workflow_file
         workflow_run_config = workflow_file.get(True, workflow_file.get("on", {}))["workflow_run"]
         
@@ -42,15 +46,17 @@ class TestWorkflowFailureTracker:
         jobs = workflow_file.get("jobs", {})
         track_failures = jobs.get("track-failures", {})
         
-        # Should only run when the workflow run conclusion is failure
-        expected_condition = "${{ github.event.workflow_run.conclusion == 'failure' }}"
+        # Should only run when the workflow run conclusion is failure and not on PR-related events
+        expected_condition = "${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.event != 'pull_request_review' && github.event.workflow_run.event != 'pull_request_review_comment' && github.event.workflow_run.event != 'pull_request_target' }}"
         assert track_failures.get("if") == expected_condition
 
     def test_workflow_structure_is_valid(self, workflow_file):
         """Test that the workflow has a valid structure."""
         # Basic structure validation
         assert "name" in workflow_file
-        assert True in workflow_file or "on" in workflow_file  # 'on' becomes True in YAML parsing
+        # 'on' keyword becomes True in YAML parsing due to PyYAML's implicit boolean conversion
+        # See: https://yaml.org/type/bool.html and https://pyyaml.org/wiki/PyYAMLDocumentation
+        assert True in workflow_file or "on" in workflow_file
         assert "jobs" in workflow_file
         
         # Job structure validation
@@ -100,8 +106,27 @@ class TestWorkflowFailureTracker:
         ]
         
         for expected_action in expected_actions:
-            assert any(action.startswith(expected_action.split('@')[0]) for action in actions_used), \
-                f"Missing expected action: {expected_action}"
+            # GitHub action names follow the pattern: owner/repo@ref
+            # According to GitHub docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsuses
+            # Action references can contain '@' only as separator between action and version/ref
+            # Valid formats: owner/repo@ref, ./path/to/action, docker://image:tag
+            # We use regex validation for robustness instead of simple string splitting
+            action_pattern = re.compile(r'^([^@/]+/[^@/]+)@(.+)$|^\./.+$|^docker://.+$')
+            
+            for action in actions_used:
+                if not action_pattern.match(action):
+                    pytest.fail(f"Invalid action format: {action}")
+                    
+                # Extract action name (part before @) for comparison
+                if '@' in action:
+                    action_name = action.split('@')[0]
+                else:
+                    action_name = action
+                    
+                if expected_action.split('@')[0] in action_name:
+                    break
+            else:
+                pytest.fail(f"Missing expected action: {expected_action}")
 
     def test_workflow_timeout_is_reasonable(self, workflow_file):
         """Test that the workflow has a reasonable timeout."""

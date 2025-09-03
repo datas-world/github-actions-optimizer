@@ -1,6 +1,6 @@
 # Workflow Failure Tracker
 
-This document describes the Workflow Failure Tracker functionality that automatically monitors GitHub Actions workflow failures and creates/updates issues for them.
+This document describes the [Workflow Failure Tracker](../.github/workflows/workflow-failure-tracker.yml) functionality that automatically monitors GitHub Actions workflow failures and creates/updates issues for them.
 
 ## Overview
 
