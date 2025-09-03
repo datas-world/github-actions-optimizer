@@ -16,8 +16,8 @@ class TestWorkflowFailureTracker:
         with open(workflow_path, "r") as f:
             return yaml.safe_load(f)
 
-    def test_workflow_triggers_on_correct_events(self, workflow_file):
-        """Test that the workflow triggers on the correct events."""
+    def test_workflow_triggers_on_all_workflows(self, workflow_file):
+        """Test that the workflow triggers on all workflows."""
         # In YAML, 'on' is a reserved word in Python and becomes True when parsed by PyYAML
         # This is documented in PyYAML's documentation and is a known behavior
         # See: https://pyyaml.org/wiki/PyYAMLDocumentation
@@ -25,9 +25,8 @@ class TestWorkflowFailureTracker:
         assert True in workflow_file or "on" in workflow_file
         workflow_run_config = workflow_file.get(True, workflow_file.get("on", {}))["workflow_run"]
         
-        # Should trigger on these specific workflows
-        expected_workflows = ["CI", "CodeQL Analysis", "Pre-commit"]
-        assert workflow_run_config["workflows"] == expected_workflows
+        # Should not have hardcoded workflows - should monitor all workflows
+        assert "workflows" not in workflow_run_config, "Workflow should not hardcode specific workflow names"
         
         # Should only trigger on completed events
         assert workflow_run_config["types"] == ["completed"]

@@ -6,7 +6,7 @@ This document describes the [Workflow Failure Tracker](../.github/workflows/work
 
 The Workflow Failure Tracker is a GitHub Actions workflow that:
 
-1. **Monitors workflow failures** - Triggers when CI, CodeQL Analysis, or Pre-commit workflows fail
+1. **Monitors workflow failures** - Triggers when any workflow fails (excluding PR-related workflows)
 2. **Creates tracking issues** - Automatically creates issues for new workflow failures
 3. **Updates existing issues** - Adds new failure occurrences to existing tracking issues
 4. **Provides structured information** - Includes failure details, investigation checklists, and history
@@ -15,10 +15,7 @@ The Workflow Failure Tracker is a GitHub Actions workflow that:
 
 ### Triggers
 
-The workflow triggers when any of the following workflows complete with a failure status:
-- CI
-- CodeQL Analysis  
-- Pre-commit
+The workflow triggers when any workflow completes with a failure status, automatically excluding PR-related workflows (pull_request, pull_request_review, pull_request_review_comment, pull_request_target events).
 
 ### Behavior
 
@@ -58,15 +55,7 @@ The workflow is configured in `.github/workflows/workflow-failure-tracker.yml` a
 
 ## Customization
 
-To monitor additional workflows, update the `workflows` list in the trigger configuration:
-
-```yaml
-on:
-  workflow_run:
-    workflows: ["CI", "CodeQL Analysis", "Pre-commit", "Your Workflow Name"]
-    types:
-      - completed
-```
+The workflow automatically monitors all workflows in the repository. If you need to exclude specific workflows beyond PR-related ones, you can modify the conditional logic in the workflow file to add additional event type filtering.
 
 ## Maintenance
 

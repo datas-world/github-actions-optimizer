@@ -2,7 +2,6 @@ name: Workflow Failure Tracker
 
 on:
   workflow_run:
-    workflows: ["CI", "CodeQL Analysis", "Pre-commit"]
     types:
       - completed
 
