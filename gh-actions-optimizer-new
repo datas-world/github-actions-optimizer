@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+"""GitHub Actions Optimizer - GitHub CLI Extension Entry Point."""
+
+if __name__ == "__main__":
+    from gh_actions_optimizer.main import main
+    main()
