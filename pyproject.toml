@@ -38,8 +38,8 @@ keywords = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    # No additional dependencies beyond standard library
-    # Extension uses gh CLI and system tools
+    "rich>=13.0.0",  # Modern terminal handling with automatic capability detection
+    "PyYAML>=6.0.0", # YAML processing for configuration and output formats
 ]
 
 [project.optional-dependencies]
@@ -53,6 +53,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
     "coverage>=7.4.0",
+    "types-rich>=0.1.0", # Type stubs for Rich library
 ]
 
 [project.urls]
