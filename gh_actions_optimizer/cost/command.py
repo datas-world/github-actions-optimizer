@@ -41,7 +41,7 @@ def cmd_cost(args: argparse.Namespace) -> None:
 
 
 def _format_cost_table(
-    costs: dict, tips: list, args: argparse.Namespace
+    costs: dict[str, float], tips: list[str], args: argparse.Namespace
 ) -> None:
     """Format cost data as a table."""
     output_lines = []

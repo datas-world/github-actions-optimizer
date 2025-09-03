@@ -10,7 +10,7 @@ import pytest
 @pytest.fixture
 def new_extension_path():
     """Return the path to the new gh-actions-optimizer extension."""
-    return Path(__file__).parent.parent / "gh-actions-optimizer-new"
+    return Path(__file__).parent.parent / "gh-actions-optimizer"
 
 
 def test_new_extension_executable(new_extension_path):

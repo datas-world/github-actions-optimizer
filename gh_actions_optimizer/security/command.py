@@ -27,7 +27,7 @@ def cmd_security(args: argparse.Namespace) -> None:
     else:
         try:
             workflows = get_workflows(repo)
-            security_issues: list[dict[str, Any]] = []
+            security_issues = []
 
             for workflow in workflows:
                 name = workflow.get("name", "unknown")

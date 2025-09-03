@@ -142,49 +142,69 @@ def main() -> None:
         return
 
     try:
-        if args.command == "analyze":
-            from .analyze import cmd_analyze
-            cmd_analyze(args)
-        elif args.command == "cost":
-            from .cost import cmd_cost
-            cmd_cost(args)
-        elif args.command == "security":
-            from .security import cmd_security
-            cmd_security(args)
-        elif args.command == "runners":
-            from .runners import cmd_runners
-            cmd_runners(args)
-        elif args.command == "generate":
-            if not hasattr(args, "generate_command") or not args.generate_command:
-                log_error(
-                    "Generate subcommand required. Use --help for options.")
+        # Route to appropriate command using pattern matching (Python 3.10+)
+        match args.command:
+            case "analyze":
+                from .analyze import cmd_analyze
+                cmd_analyze(args)
+            case "cost":
+                from .cost import cmd_cost
+                cmd_cost(args)
+            case "security":
+                from .security import cmd_security
+                cmd_security(args)
+            case "runners":
+                from .runners import cmd_runners
+                cmd_runners(args)
+            case "generate":
+                if (
+                    not hasattr(args, "generate_command")
+                    or not args.generate_command
+                ):
+                    log_error(
+                        "Generate subcommand required. Use --help for options."
+                    )
+                    sys.exit(1)
+
+                match args.generate_command:
+                    case "runner-setup":
+                        from .generate.runner_setup import (
+                            cmd_generate_runner_setup,
+                        )
+                        cmd_generate_runner_setup(args)
+                    case "workflow-patch":
+                        from .generate.workflow_patch import (
+                            cmd_generate_workflow_patch,
+                        )
+                        cmd_generate_workflow_patch(args)
+                    case _:
+                        generate_cmd = args.generate_command
+                        log_error(f"Unknown generate command: {generate_cmd}")
+                        sys.exit(1)
+            case "validate":
+                if (
+                    not hasattr(args, "validate_command")
+                    or not args.validate_command
+                ):
+                    log_error(
+                        "Validate subcommand required. Use --help for options."
+                    )
+                    sys.exit(1)
+
+                match args.validate_command:
+                    case "runners":
+                        from .validate.runners import cmd_validate_runners
+                        cmd_validate_runners(args)
+                    case _:
+                        validate_cmd = args.validate_command
+                        log_error(f"Unknown validate command: {validate_cmd}")
+                        sys.exit(1)
+            case "benchmark":
+                from .benchmark import cmd_benchmark
+                cmd_benchmark(args)
+            case _:
+                log_error(f"Unknown command: {args.command}")
                 sys.exit(1)
-            elif args.generate_command == "runner-setup":
-                from .generate.runner_setup import cmd_generate_runner_setup
-                cmd_generate_runner_setup(args)
-            elif args.generate_command == "workflow-patch":
-                from .generate.workflow_patch import cmd_generate_workflow_patch
-                cmd_generate_workflow_patch(args)
-            else:
-                log_error(f"Unknown generate command: {args.generate_command}")
-                sys.exit(1)
-        elif args.command == "validate":
-            if not hasattr(args, "validate_command") or not args.validate_command:
-                log_error(
-                    "Validate subcommand required. Use --help for options.")
-                sys.exit(1)
-            elif args.validate_command == "runners":
-                from .validate.runners import cmd_validate_runners
-                cmd_validate_runners(args)
-            else:
-                log_error(f"Unknown validate command: {args.validate_command}")
-                sys.exit(1)
-        elif args.command == "benchmark":
-            from .benchmark import cmd_benchmark
-            cmd_benchmark(args)
-        else:
-            log_error(f"Unknown command: {args.command}")
-            sys.exit(1)
     except KeyboardInterrupt:
         from .shared import log_info
         log_info("Operation cancelled by user")

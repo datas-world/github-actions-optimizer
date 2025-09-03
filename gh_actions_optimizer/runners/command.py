@@ -3,20 +3,18 @@
 import argparse
 import json
 import webbrowser
+from typing import Any
 
 from ..shared import log_info, log_success, Colors
 
 
 def cmd_runners(args: argparse.Namespace) -> None:
     """Optimize runner usage and provide recommendations."""
-    import json
-    import webbrowser
-
     if not args.quiet:
         log_info("Analyzing runner optimization opportunities...")
 
     # Runner optimization recommendations
-    runner_data = {
+    runner_data: dict[str, Any] = {
         "runner_analysis": {
             "ubuntu-latest": {
                 "cost_per_minute": 0.008,

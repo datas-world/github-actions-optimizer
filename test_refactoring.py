@@ -31,10 +31,10 @@ def test_imports():
 
 
 def test_entry_point():
-    """Test the new entry point."""
+    """Test the entry point."""
     print("\nTesting entry point...")
 
-    entry_point = Path("gh-actions-optimizer-new")
+    entry_point = Path("gh-actions-optimizer")
     if not entry_point.exists():
         print("✗ Entry point not found")
         return False

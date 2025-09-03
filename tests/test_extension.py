@@ -70,4 +70,4 @@ def test_runners_command(extension_path):
     )
 
     assert result.returncode == 0
-    assert "runner_recommendations" in result.stdout
+    assert "general_recommendations" in result.stdout
