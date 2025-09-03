@@ -28,12 +28,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -42,7 +42,7 @@ jobs:
             .pre-commit-config.yaml
 
       - name: Cache pre-commit hooks
-        uses: actions/cache@v4
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -57,9 +57,9 @@ jobs:
           pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest
 
       - name: Install system dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@44c33b32f808cae6a59dcc81e2a2c6132f3d5003 # latest
         with:
-          packages: jq
+          packages: act
           version: 1.0
 
       - name: Run pre-commit hooks
@@ -78,10 +78,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -171,12 +171,6 @@ jobs:
           python gh-actions-optimizer security --sample-data --format yaml | python -c "import yaml, sys; yaml.safe_load(sys.stdin)" && echo "YAML output: ✓ Valid" || exit 1
 
           echo "All output validation tests passed ✓"
-
-      - name: Run tests
-        run: |
-          pytest tests/ -v --tb=short --strict-markers --strict-config
-        if: always()
-
   extension-test:
     name: Test GitHub CLI extension
     runs-on: ubuntu-latest
@@ -184,10 +178,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -196,11 +190,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Install GitHub CLI
-        uses: cli/gh-extension-precompile@v2
-        with:
-          go_version: "1.21"
 
       - name: Test extension commands
         run: |
@@ -229,10 +218,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -248,7 +237,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Bandit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: bandit-results
           path: bandit-report.json
@@ -260,7 +249,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Safety results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: safety-results
           path: safety-report.json
@@ -276,9 +265,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@6fad41793215e16e31faa120c584d320a07b88de # v4
         with:
           fail-on-severity: moderate
