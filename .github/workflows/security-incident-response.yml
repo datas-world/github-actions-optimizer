@@ -1,0 +1,224 @@
+name: Security Incident Response Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      incident_type:
+        description: 'Type of security incident'
+        required: true
+        default: 'general'
+        type: choice
+        options:
+          - general
+          - vulnerability
+          - code-scanning
+          - secret-leak
+          - dependency
+          - compliance
+      incident_description:
+        description: 'Description of the security incident'
+        required: true
+        type: string
+      severity:
+        description: 'Severity level'
+        required: true
+        default: 'medium'
+        type: choice
+        options:
+          - critical
+          - high
+          - medium
+          - low
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  test-security-response:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for duplicate issues
+        id: check-duplicates
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('Checking for duplicate security issues...');
+
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security',
+              per_page: 100
+            });
+
+            console.log(`Found ${existingIssues.data.length} existing security issues`);
+
+            const incidentType = context.payload.inputs.incident_type;
+
+            const duplicateIssue = existingIssues.data.find(issue =>
+              issue.title.toLowerCase().includes(incidentType.toLowerCase())
+            );
+
+            if (duplicateIssue) {
+              console.log(`Found duplicate issue: #${duplicateIssue.number} - ${duplicateIssue.title}`);
+              core.setOutput('duplicate_found', 'true');
+              core.setOutput('duplicate_number', duplicateIssue.number);
+            } else {
+              console.log('No duplicate found, will create new issue');
+              core.setOutput('duplicate_found', 'false');
+            }
+
+      - name: Update existing issue
+        if: steps.check-duplicates.outputs.duplicate_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = ${{ steps.check-duplicates.outputs.duplicate_number }};
+            const timestamp = new Date().toISOString();
+
+            const updateBody = [
+              '## 🔄 Security Alert Update',
+              '',
+              `**New manual report detected:** ${timestamp}`,
+              '',
+              `**Manual Report:** ${{ github.event.inputs.incident_description }}`,
+              '',
+              'Please review if this requires additional investigation or if the existing issue covers this incident.',
+              '',
+              '**Event Details:**',
+              '- Trigger: workflow_dispatch',
+              `- Incident Type: ${{ github.event.inputs.incident_type }}`,
+              `- Severity: ${{ github.event.inputs.severity }}`,
+              `- Timestamp: ${timestamp}`,
+              '',
+              '*Updated by Security Incident Response automation*'
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: updateBody
+            });
+
+            console.log(`Updated existing issue #${issueNumber} instead of creating duplicate`);
+
+      - name: Create new security issue
+        if: steps.check-duplicates.outputs.duplicate_found == 'false'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const inputs = context.payload.inputs;
+            const timestamp = new Date().toISOString();
+
+            const title = `🚨 Security Incident: ${inputs.incident_type}`;
+            const severity = inputs.severity;
+            const labels = ['security', 'manual-report', `severity:${severity}`, `type:${inputs.incident_type}`];
+
+            const body = [
+              '# Manual Security Incident Report',
+              '',
+              '## Incident Details',
+              `- **Type**: ${inputs.incident_type}`,
+              `- **Severity**: ${severity.toUpperCase()}`,
+              `- **Reported**: ${timestamp}`,
+              '',
+              '## Description',
+              inputs.incident_description,
+              '',
+              '## Action Required',
+              '- [ ] Investigate the security incident',
+              '- [ ] Assess impact and scope',
+              '- [ ] Implement immediate mitigations',
+              '- [ ] Develop comprehensive fix',
+              '- [ ] Test security measures',
+              '- [ ] Update security documentation',
+              '- [ ] Conduct post-incident review',
+              '',
+              '**Manually reported - Auto-created by Security Incident Response workflow**'
+            ].join('\n');
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: labels,
+              assignees: ['copilot']
+            });
+
+            console.log(`Created security issue #${issue.data.number}: ${title}`);
+
+            if (severity === 'critical' || severity === 'high') {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                labels: ['urgent', 'priority:high']
+              });
+
+              const urgentComment = [
+                '⚠️ **HIGH/CRITICAL SEVERITY SECURITY INCIDENT**',
+                '',
+                `This issue requires immediate attention due to its ${severity} severity level.`,
+                '',
+                '@copilot Please prioritize this security incident and begin investigation immediately.'
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                body: urgentComment
+              });
+            }
+
+      - name: Assign to Copilot for automated resolution
+        if: steps.check-duplicates.outputs.duplicate_found == 'false'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security',
+              sort: 'created',
+              direction: 'desc',
+              per_page: 1
+            });
+
+            if (issues.data.length > 0) {
+              const issueNumber = issues.data[0].number;
+
+              const instructions = [
+                '@copilot Please analyze this security issue and create a pull request with the necessary fixes.',
+                '',
+                '**Automated Security Response Instructions:**',
+                '1. Analyze the security vulnerability or issue',
+                '2. Implement appropriate security fixes',
+                '3. Add necessary tests for the security fix',
+                '4. Update documentation if needed',
+                '5. Ensure all security scans pass',
+                '',
+                'This is an automated security incident response. Please prioritize accordingly.'
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: instructions
+              });
+
+              console.log(`Assigned issue #${issueNumber} to Copilot for automated resolution`);
+            }
