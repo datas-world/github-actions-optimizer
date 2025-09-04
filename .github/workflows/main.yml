@@ -51,6 +51,8 @@ jobs:
           pip install pre-commit
           # Install additional dependencies for pre-commit hooks
           pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest rich
+          # Install security scanning tools
+          pip install pip-audit safety detect-secrets
 
       - name: Install system dependencies
         run: |
@@ -67,6 +69,38 @@ jobs:
       - name: Run mypy separately (workaround for pre-commit network issues)
         run: |
           mypy --strict gh_actions_optimizer/
+
+      - name: Run security scans (fail on issues)
+        run: |
+          echo "🔍 Running comprehensive security scans..."
+          
+          # Bandit security scan (fail on HIGH severity issues)
+          echo "Running bandit security scan..."
+          bandit -r gh_actions_optimizer/ --format json --severity-level high > bandit-report.json
+          if [ -s bandit-report.json ] && [ "$(jq '.results | length' bandit-report.json)" -gt 0 ]; then
+            echo "❌ High severity security issues found by bandit!"
+            jq '.results[] | "File: \(.filename), Line: \(.line_number), Issue: \(.issue_text)"' bandit-report.json
+            exit 1
+          fi
+          
+          # Dependency vulnerability scan with pip-audit
+          echo "Running pip-audit dependency scan..."
+          pip-audit --desc --strict --format json > pip-audit-report.json || {
+            echo "❌ Vulnerabilities found in dependencies!"
+            cat pip-audit-report.json
+            exit 1
+          }
+          
+          # Secret detection scan
+          echo "Running detect-secrets scan..."
+          detect-secrets scan --exclude-files '\.git/' --exclude-files '\.mypy_cache/' --exclude-files '__pycache__/' . > current-secrets.json
+          if [ "$(jq '.results | length' current-secrets.json)" -gt 0 ]; then
+            echo "❌ Secrets detected in codebase!"
+            jq '.results' current-secrets.json
+            exit 1
+          fi
+          
+          echo "✅ All security scans passed!"
 
       - name: Auto-update pre-commit hooks (scheduled only)
         if: github.event_name == 'schedule' && github.event.schedule == '0 4 * * 1'
@@ -215,7 +249,8 @@ jobs:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0'
+    # Skip on PRs to avoid extension pack issues, only run on main branch pushes
+    if: (github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0') && github.event_name != 'pull_request'
 
     strategy:
       fail-fast: false
@@ -227,12 +262,22 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+          # For PR analysis, ensure we have both base and head
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@4f3212b61783c3c68e8309a0f18a699764811cda # v3.27.1
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
+          config: |
+            disable-default-path-filters: true
+        env:
+          # Completely disable PR diff analysis and extension packs - multiple flags
+          CODEQL_ACTION_FEATURE_ANALYSIS_FILTER: false
+          CODEQL_ACTION_FEATURE_WILL_UPLOAD: true
+          CODEQL_DISABLE_EXTENSION_PACK: true
+          CODEQL_DISABLE_PR_DIFF_RANGE: true
 
       - name: Set up Python
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
