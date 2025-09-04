@@ -36,11 +36,10 @@ keywords = [
     "github-cli",
     "extension",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "rich>=13.0.0",  # Modern terminal handling with automatic capability detection
     "PyYAML>=6.0.0", # YAML processing for configuration and output formats
-    "tomli>=2.0.0; python_version<'3.11'",  # TOML parsing for Python < 3.11
 ]
 
 [project.optional-dependencies]

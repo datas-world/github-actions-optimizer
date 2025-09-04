@@ -14,59 +14,52 @@ Features:
 # Extension metadata - use importlib.metadata for proper version handling
 import functools
 import importlib.metadata
-from typing import Optional
 
 import semver
 
 
-@functools.lru_cache(maxsize=1)
-def _get_version() -> str:
-    """Get and validate version from package metadata.
+class _VersionManager:
+    """Manages package version with caching."""
 
-    Returns:
-        Validated semantic version string with 'v' prefix.
+    @functools.cached_property
+    def __version__(self) -> str:
+        """Get and validate version from package metadata with caching.
 
-    Raises:
-        RuntimeError: If version cannot be determined or is invalid.
-    """
-    try:
-        # Try to get version from installed package metadata
-        version = importlib.metadata.version("github-actions-optimizer")
+        Returns:
+            Validated semantic version string with 'v' prefix.
 
-        # Normalize version format (remove .dev0 suffix for semver validation)
-        normalized_version = version.replace(".dev0", "-dev")
-
-        # Validate that it's a proper semantic version
+        Raises:
+            RuntimeError: If version cannot be determined or is invalid.
+        """
         try:
-            semver.VersionInfo.parse(normalized_version)
-        except ValueError as e:
-            raise RuntimeError(f"Invalid semantic version '{version}': {e}") from e
+            # Try to get version from installed package metadata
+            version = importlib.metadata.version("github-actions-optimizer")
 
-        return f"v{version}"
+            # Normalize version format (remove .dev0 suffix for semver validation)
+            normalized_version = version.replace(".dev0", "-dev")
 
-    except importlib.metadata.PackageNotFoundError as e:
-        raise RuntimeError(
-            "Package 'github-actions-optimizer' not found. "
-            "This indicates an installation issue."
-        ) from e
-    except Exception as e:
-        raise RuntimeError(f"Failed to determine package version: {e}") from e
+            # Validate that it's a proper semantic version
+            try:
+                semver.VersionInfo.parse(normalized_version)
+            except ValueError as e:
+                raise RuntimeError(f"Invalid semantic version '{version}': {e}") from e
 
+            return f"v{version}"
 
-# Cached version property
-__version__: Optional[str] = None
-
-
-def get_version() -> str:
-    """Get the cached version or compute it if not cached."""
-    global __version__
-    if __version__ is None:
-        __version__ = _get_version()
-    return __version__
+        except importlib.metadata.PackageNotFoundError as e:
+            raise RuntimeError(
+                "Package 'github-actions-optimizer' not found. "
+                "This indicates an installation issue."
+            ) from e
+        except Exception as e:
+            raise RuntimeError(f"Failed to determine package version: {e}") from e
 
 
-# Package metadata
-__version__ = get_version()
+# Create singleton instance for version management
+_version_manager = _VersionManager()
+
+# Package metadata - single source of truth for version
+__version__ = _version_manager.__version__
 __name__ = "gh-actions-optimizer"
 __description__ = (
     "Optimize GitHub Actions workflows for cost, performance, and security"
@@ -75,4 +68,4 @@ __description__ = (
 # Package exports
 from .main import main  # noqa: E402
 
-__all__ = ["main", "__version__", "__name__", "__description__", "get_version"]
+__all__ = ["main", "__version__", "__name__", "__description__"]

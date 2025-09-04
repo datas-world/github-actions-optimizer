@@ -11,7 +11,7 @@ from pathlib import Path
 import semver
 import toml
 
-from gh_actions_optimizer import get_version
+from gh_actions_optimizer import __version__
 
 
 class TestVersionConsistency:
@@ -26,7 +26,7 @@ class TestVersionConsistency:
 
     def test_version_is_valid_semver(self) -> None:
         """Test that the version follows semantic versioning."""
-        version = get_version()
+        version = __version__
 
         # Remove 'v' prefix for semver validation
         version_without_prefix = version.lstrip("v")
