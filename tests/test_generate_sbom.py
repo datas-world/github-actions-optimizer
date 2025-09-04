@@ -107,13 +107,14 @@ class TestSBOMGeneration:
 
         cmd_generate_sbom(mock_args)
 
-        # Verify subprocess was called correctly
-        mock_subprocess.assert_called_once_with(
-            ["pip-audit", "--format=cyclonedx-json", "--ignore-vuln", "*"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        # Verify subprocess was called correctly with security enhancements
+        expected_call = mock_subprocess.call_args
+        assert expected_call[0][0] == ["pip-audit", "--format=cyclonedx-json", "--ignore-vuln", "*"]
+        assert expected_call[1]["capture_output"] is True
+        assert expected_call[1]["text"] is True
+        assert expected_call[1]["check"] is True
+        assert "env" in expected_call[1]
+        assert "timeout" in expected_call[1]
 
         # Verify log was called
         mock_log_info.assert_called_once_with("Generating Software Bill of Materials (SBOM)...")
@@ -158,7 +159,8 @@ class TestSBOMGeneration:
 
     @patch("gh_actions_optimizer.generate.sbom.command.subprocess.run")
     @patch("gh_actions_optimizer.generate.sbom.command.log_success")
-    def test_sbom_generation_with_file_output(self, mock_log_success, mock_subprocess, mock_args_with_output, sample_sbom_data):
+    @patch("pathlib.Path.mkdir")  # Mock directory creation
+    def test_sbom_generation_with_file_output(self, mock_mkdir, mock_log_success, mock_subprocess, mock_args_with_output, sample_sbom_data):
         """Test SBOM generation with file output."""
         # Mock subprocess response
         mock_result = Mock()
@@ -167,16 +169,20 @@ class TestSBOMGeneration:
 
         cmd_generate_sbom(mock_args_with_output)
 
-        # Verify subprocess was called with output file
-        mock_subprocess.assert_called_once_with(
-            ["pip-audit", "--format=cyclonedx-json", "--ignore-vuln", "*", "--output", "/tmp/test-sbom.json"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        # Verify subprocess was called with output file and security enhancements
+        expected_call = mock_subprocess.call_args
+        expected_cmd = ["pip-audit", "--format=cyclonedx-json", "--ignore-vuln", "*", "--output", "/tmp/test-sbom.json"]
+        assert expected_call[0][0] == expected_cmd
+        assert expected_call[1]["capture_output"] is True
+        assert expected_call[1]["text"] is True
+        assert expected_call[1]["check"] is True
+        assert "env" in expected_call[1]
+        assert "timeout" in expected_call[1]
 
-        # Verify success message
-        mock_log_success.assert_called_once_with("SBOM saved to /tmp/test-sbom.json")
+        # Verify success message uses validated path (will be the same for /tmp files)
+        mock_log_success.assert_called_once()
+        success_call_args = mock_log_success.call_args[0][0]
+        assert "/tmp/test-sbom.json" in success_call_args
 
     @patch("gh_actions_optimizer.generate.sbom.command.subprocess.run")
     @patch("gh_actions_optimizer.generate.sbom.command.log_error")
@@ -301,6 +307,50 @@ class TestSBOMGeneration:
         captured = capsys.readouterr()
         assert "Project: Unknown" in captured.out
         assert "Generated: Unknown" in captured.out
+
+    @patch("gh_actions_optimizer.generate.sbom.command.log_error")
+    def test_sbom_generation_invalid_output_path(self, mock_log_error):
+        """Test SBOM generation with invalid output path (directory traversal)."""
+        args = argparse.Namespace()
+        args.quiet = False
+        args.format = "json"
+        args.output = "../../../etc/passwd"  # Directory traversal attempt
+        
+        cmd_generate_sbom(args)
+        
+        # Verify error is logged for invalid path
+        mock_log_error.assert_called_once()
+        error_msg = mock_log_error.call_args[0][0]
+        assert "Invalid output path" in error_msg
+        assert "Path cannot contain '..' components" in error_msg
+
+    @patch("gh_actions_optimizer.generate.sbom.command.subprocess.run")
+    @patch("gh_actions_optimizer.generate.sbom.command.log_error")
+    def test_sbom_generation_timeout_error(self, mock_log_error, mock_subprocess, mock_args):
+        """Test SBOM generation with subprocess timeout."""
+        # Mock subprocess to raise TimeoutExpired
+        mock_subprocess.side_effect = subprocess.TimeoutExpired("pip-audit", 60)
+
+        cmd_generate_sbom(mock_args)
+
+        # Verify timeout error logging
+        mock_log_error.assert_called_once_with("SBOM generation timed out after 60 seconds")
+
+    @patch("gh_actions_optimizer.generate.sbom.command.log_error")
+    def test_sbom_generation_absolute_path_validation(self, mock_log_error):
+        """Test SBOM generation with unsafe absolute path."""
+        args = argparse.Namespace()
+        args.quiet = False
+        args.format = "json"
+        args.output = "/etc/shadow"  # Unsafe system file
+        
+        cmd_generate_sbom(args)
+        
+        # Verify error is logged for unsafe absolute path
+        mock_log_error.assert_called_once()
+        error_msg = mock_log_error.call_args[0][0]
+        assert "Invalid output path" in error_msg
+        assert "Absolute paths must be within safe directories" in error_msg
 
 
 class TestSBOMMainIntegration:
