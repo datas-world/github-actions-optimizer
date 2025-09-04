@@ -1,0 +1,347 @@
+name: Security Incident Response
+
+on:
+  # Trigger on security alerts
+  security_and_analysis:
+
+  # Trigger on code scanning alerts
+  code_scanning_alert:
+    types: [created, reopened]
+
+  # Trigger on secret scanning alerts
+  secret_scanning_alert:
+    types: [created, reopened]
+
+  # Trigger on Dependabot alerts
+  dependabot_alert:
+    types: [created, reopened]
+
+  # Manual trigger for other security incidents
+  workflow_dispatch:
+    inputs:
+      incident_type:
+        description: 'Type of security incident'
+        required: true
+        default: 'general'
+        type: choice
+        options:
+          - general
+          - vulnerability
+          - code-scanning
+          - secret-leak
+          - dependency
+          - compliance
+      incident_description:
+        description: 'Description of the security incident'
+        required: true
+        type: string
+      severity:
+        description: 'Severity level'
+        required: true
+        default: 'medium'
+        type: choice
+        options:
+          - critical
+          - high
+          - medium
+          - low
+
+permissions:
+  contents: read
+  issues: write
+  security-events: read
+
+jobs:
+  create-security-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Create security incident issue
+        uses: actions/github-script@60a0d83039c74a4aaa543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const eventName = context.eventName;
+            let title, body, labels, severity;
+
+            // Determine incident details based on trigger
+            if (eventName === 'code_scanning_alert') {
+              const alert = context.payload.alert;
+              title = `🔒 Code Scanning Alert: ${alert.rule.description}`;
+              severity = alert.rule.severity || 'medium';
+              labels = ['security', 'code-scanning', `severity:${severity}`];
+              body = `# Security Alert: Code Scanning Detection
+
+            ## Alert Details
+            - **Rule**: ${alert.rule.description}
+            - **Severity**: ${severity}
+            - **State**: ${alert.state}
+            - **Tool**: ${alert.tool.name}
+            - **Location**: ${alert.most_recent_instance?.location?.path || 'N/A'}:${alert.most_recent_instance?.location?.start_line || 'N/A'}
+
+            ## Description
+            ${alert.rule.full_description || alert.rule.description}
+
+            ## Action Required
+            - [ ] Review the security alert
+            - [ ] Assess impact and risk
+            - [ ] Implement fix or mitigation
+            - [ ] Test security fix
+            - [ ] Update security documentation
+
+            ## Alert URL
+            [View Alert](${alert.html_url})
+
+            **Auto-created by Security Incident Response workflow**`;
+
+            } else if (eventName === 'secret_scanning_alert') {
+              const alert = context.payload.alert;
+              title = `🔐 Secret Scanning Alert: ${alert.secret_type_display_name}`;
+              severity = 'high';  // Secrets are always high severity
+              labels = ['security', 'secret-scanning', 'severity:high'];
+              body = `# Security Alert: Secret Detection
+
+            ## Alert Details
+            - **Secret Type**: ${alert.secret_type_display_name}
+            - **State**: ${alert.state}
+            - **Location**: ${alert.locations?.[0]?.details?.path || 'Multiple locations'}
+
+            ## Description
+            A secret has been detected in the repository. This requires immediate attention.
+
+            ## Immediate Actions Required
+            - [ ] **URGENT**: Revoke the exposed secret immediately
+            - [ ] Remove secret from repository history if needed
+            - [ ] Generate new credentials
+            - [ ] Update all systems using the old secret
+            - [ ] Review access logs for potential misuse
+            - [ ] Implement secret scanning prevention
+
+            ## Alert URL
+            [View Alert](${alert.html_url})
+
+            **⚠️ HIGH PRIORITY - Auto-created by Security Incident Response workflow**`;
+
+            } else if (eventName === 'dependabot_alert') {
+              const alert = context.payload.alert;
+              const vulnerability = alert.security_vulnerability;
+              title = `📦 Dependabot Alert: ${vulnerability.package.name}`;
+              severity = vulnerability.severity || 'medium';
+              labels = ['security', 'dependencies', 'dependabot', `severity:${severity}`];
+              body = `# Security Alert: Vulnerable Dependency
+
+            ## Vulnerability Details
+            - **Package**: ${vulnerability.package.name}
+            - **Ecosystem**: ${vulnerability.package.ecosystem}
+            - **Severity**: ${severity.toUpperCase()}
+            - **CVE**: ${vulnerability.advisory.cve_id || 'N/A'}
+            - **GHSA**: ${vulnerability.advisory.ghsa_id}
+
+            ## Description
+            ${vulnerability.advisory.summary}
+
+            ## Affected Versions
+            - **Vulnerable Range**: ${vulnerability.vulnerable_version_range}
+            - **First Patched**: ${vulnerability.first_patched_version?.identifier || 'Not available'}
+
+            ## Action Required
+            - [ ] Update dependency to patched version
+            - [ ] Test application functionality
+            - [ ] Review for breaking changes
+            - [ ] Update dependency constraints
+            - [ ] Run security scan after update
+
+            ## Advisory URL
+            [View Advisory](${vulnerability.advisory.permalink})
+
+            **Auto-created by Security Incident Response workflow**`;
+
+            } else if (eventName === 'workflow_dispatch') {
+              const inputs = context.payload.inputs;
+              title = `🚨 Security Incident: ${inputs.incident_type}`;
+              severity = inputs.severity;
+              labels = ['security', 'manual-report', `severity:${severity}`, `type:${inputs.incident_type}`];
+              body = `# Manual Security Incident Report
+
+            ## Incident Details
+            - **Type**: ${inputs.incident_type}
+            - **Severity**: ${severity.toUpperCase()}
+            - **Reported**: ${new Date().toISOString()}
+
+            ## Description
+            ${inputs.incident_description}
+
+            ## Action Required
+            - [ ] Investigate the security incident
+            - [ ] Assess impact and scope
+            - [ ] Implement immediate mitigations
+            - [ ] Develop comprehensive fix
+            - [ ] Test security measures
+            - [ ] Update security documentation
+            - [ ] Conduct post-incident review
+
+            **Manually reported - Auto-created by Security Incident Response workflow**`;
+
+            } else {
+              // Generic security event
+              title = `🔒 Security Event Detected`;
+              severity = 'medium';
+              labels = ['security', 'auto-detected'];
+              body = `# Security Event Detection
+
+            ## Event Details
+            - **Event Type**: ${eventName}
+            - **Detected**: ${new Date().toISOString()}
+
+            ## Action Required
+            - [ ] Review security event details
+            - [ ] Investigate potential impact
+            - [ ] Implement necessary mitigations
+            - [ ] Update security measures
+
+            **Auto-created by Security Incident Response workflow**`;
+            }
+
+            // Check for existing similar issues to prevent duplicates
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security',
+              per_page: 100
+            });
+
+            // Check if a similar issue already exists
+            const duplicateIssue = existingIssues.data.find(issue => {
+              if (eventName === 'code_scanning_alert') {
+                return issue.title.includes(context.payload.alert?.rule?.description);
+              } else if (eventName === 'secret_scanning_alert') {
+                return issue.title.includes(context.payload.alert?.secret_type_display_name);
+              } else if (eventName === 'dependabot_alert') {
+                return issue.title.includes(context.payload.alert?.security_vulnerability?.package?.name);
+              } else if (eventName === 'workflow_dispatch') {
+                // For manual triggers, check for similar titles with same incident type
+                return issue.title.includes(context.payload.inputs.incident_type);
+              }
+              return false;
+            });
+
+            if (duplicateIssue) {
+              console.log(`Found existing similar issue #${duplicateIssue.number}: ${duplicateIssue.title}`);
+
+              // Add a comment to the existing issue instead of creating a new one
+              const updateBody = `## 🔄 Security Alert Update
+
+**New ${eventName} event detected:** ${new Date().toISOString()}
+
+${eventName === 'workflow_dispatch' ?
+  `**Manual Report:** ${context.payload.inputs.incident_description}` :
+  '**Automated Detection:** Similar security event detected by monitoring systems.'
+}
+
+Please review if this requires additional investigation or if the existing issue covers this incident.
+
+**Event Details:**
+- Trigger: ${eventName}
+- Severity: ${severity}
+- Timestamp: ${new Date().toISOString()}
+
+*Updated by Security Incident Response automation*`;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: duplicateIssue.number,
+                body: updateBody
+              });
+
+              // Update labels if severity is higher
+              if ((severity === 'critical' || severity === 'high') &&
+                  !duplicateIssue.labels.some(label => label.name === 'urgent')) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: duplicateIssue.number,
+                  labels: ['urgent', 'priority:high']
+                });
+              }
+
+              console.log(`Updated existing issue #${duplicateIssue.number} instead of creating duplicate`);
+              return; // Exit early, don't create new issue
+            }
+
+            // Create the issue (only if no duplicate found)
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: labels,
+              assignees: ['copilot']  // Assign to Copilot
+            });
+
+            console.log(`Created security issue #${issue.data.number}: ${title}`);
+
+            // Add severity-based additional actions
+            if (severity === 'critical' || severity === 'high') {
+              // Add urgent label and comment
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                labels: ['urgent', 'priority:high']
+              });
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                body: `⚠️ **HIGH/CRITICAL SEVERITY SECURITY INCIDENT**
+
+This issue requires immediate attention due to its ${severity} severity level.
+
+@copilot Please prioritize this security incident and begin investigation immediately.`
+              });
+            }
+
+      - name: Assign to Copilot for automated resolution
+        if: github.event_name != 'secret_scanning_alert'  # Don't auto-assign secret alerts to Copilot
+        uses: actions/github-script@60a0d83039c74a4aaa543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // For non-secret alerts, we can assign to Copilot for automated fix
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security',
+              sort: 'created',
+              direction: 'desc',
+              per_page: 1
+            });
+
+            if (issues.data.length > 0) {
+              const issueNumber = issues.data[0].number;
+
+              // Add comment to assign Copilot for automated resolution
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@copilot Please analyze this security issue and create a pull request with the necessary fixes.
+
+**Automated Security Response Instructions:**
+1. Analyze the security vulnerability or issue
+2. Implement appropriate security fixes
+3. Add necessary tests for the security fix
+4. Update documentation if needed
+5. Ensure all security scans pass
+
+This is an automated security incident response. Please prioritize accordingly.`
+              });
+
+              console.log(`Assigned issue #${issueNumber} to Copilot for automated resolution`);
+            }
