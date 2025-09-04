@@ -33,9 +33,13 @@ class Colors:
     def _should_force_color(self) -> bool:
         """Check if color output should be forced."""
         force_color = os.environ.get("FORCE_COLOR", "")
-        # Basic sanitization for safety
-        if force_color and not force_color.replace("_", "").replace("-", "").isalnum():
-            return False
+        # Enhanced sanitization for safety
+        try:
+            validated_env = InputValidator.validate_environment_variable("FORCE_COLOR", force_color)
+            force_color = validated_env[1]
+        except Exception:
+            # If validation fails, fall back to safe default
+            force_color = ""
         return force_color in ("1", "true", "True", "TRUE")
 
     def _should_disable_color(self) -> bool:
@@ -43,10 +47,19 @@ class Colors:
         no_color = os.environ.get("NO_COLOR", "")
         force_color = os.environ.get("FORCE_COLOR", "")
         
-        # Basic sanitization for safety
-        if no_color and not no_color.replace("_", "").replace("-", "").isalnum():
+        # Enhanced sanitization for safety
+        try:
+            if no_color:
+                validated = InputValidator.validate_environment_variable("NO_COLOR", no_color)
+                no_color = validated[1]
+        except Exception:
             no_color = ""
-        if force_color and not force_color.replace("_", "").replace("-", "").isalnum():
+            
+        try:
+            if force_color:
+                validated = InputValidator.validate_environment_variable("FORCE_COLOR", force_color)
+                force_color = validated[1]
+        except Exception:
             force_color = ""
 
         # FORCE_COLOR=0 explicitly disables color
@@ -200,14 +213,31 @@ def add_output_args(parser_obj: argparse.ArgumentParser) -> None:
 def check_dependencies() -> None:
     """Check if required dependencies are available."""
     import subprocess  # nosec B404
+    import shutil
 
     deps = ["gh", "jq"]
     missing = []
 
     for dep in deps:
         try:
-            subprocess.run([dep, "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Use shutil.which for safer path resolution
+            if not shutil.which(dep):
+                missing.append(dep)
+                continue
+                
+            # Validate dependency name for security
+            validate_and_log_error(InputValidator.sanitize_for_shell, dep)
+            
+            # Use explicit path and minimal arguments
+            result = subprocess.run(
+                [shutil.which(dep), "--version"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,  # Add timeout for safety
+                env={"PATH": os.environ.get("PATH", "")},  # Minimal environment
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             missing.append(dep)
 
     if missing:

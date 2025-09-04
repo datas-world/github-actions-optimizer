@@ -18,23 +18,24 @@ class ValidationError(Exception):
 class InputValidator:
     """Comprehensive input validator for security-critical operations."""
 
-    # Security patterns
+    # Security patterns - using non-catastrophic backtracking patterns
     DANGEROUS_PATTERNS = [
-        r"\.\.\/",  # Directory traversal
-        r"\.\.\\",  # Windows directory traversal
-        r"\$\{.*\}",  # Variable injection
-        r"(?i)(script|javascript|vbscript):",  # Script injection
-        r"(?i)<script",  # HTML script tags
+        r"\.\.[/\\]",  # Directory traversal (simplified to avoid ReDoS)
+        r"\$\{[^}]{0,100}\}",  # Variable injection (limited length)
+        r"(?i)(?:script|javascript|vbscript):",  # Script injection (non-capturing group)
+        r"(?i)<script(?:\s|>)",  # HTML script tags (more specific)
         r"(?i)eval\s*\(",  # Code evaluation
         r"(?i)exec\s*\(",  # Code execution
         r"(?i)system\s*\(",  # System calls
-        r"(?i)import\s+os",  # OS module imports
+        r"(?i)import\s+os(?:\s|$)",  # OS module imports (more specific)
         r"(?i)__import__",  # Dynamic imports
+        r"(?i)subprocess\.",  # Subprocess usage
+        r"(?i)os\.system",  # OS system calls
     ]
 
-    # GitHub-specific patterns
-    GITHUB_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?/[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$")
-    GITHUB_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/-]+$")
+    # GitHub-specific patterns (using atomic groups and possessive quantifiers where possible)
+    GITHUB_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?/[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$")
+    GITHUB_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/-]{1,250}$")
     COMMIT_SHA_PATTERN = re.compile(r"^[a-f0-9]{7,40}$")
     
     # Input limits
@@ -294,12 +295,28 @@ class InputValidator:
         if not isinstance(value, str):
             raise ValidationError("Value must be a string")
 
-        # Remove or escape dangerous shell characters
-        dangerous_chars = r'[;&|`$(){}<>]'
+        # Check for dangerous shell characters and patterns
+        dangerous_chars = r'[;&|`$(){}<>*?[\]~]'
         if re.search(dangerous_chars, value):
             raise ValidationError(
                 "Value contains characters not safe for shell execution"
             )
+
+        # Additional checks for shell injection patterns
+        shell_patterns = [
+            r"(?i)\beval\b",
+            r"(?i)\bexec\b", 
+            r"(?i)\bsystem\b",
+            r"(?i)\bpopen\b",
+            r"(?i)\\x[0-9a-f]{2}",  # Hex escape sequences
+            r"(?i)\\[0-9]{1,3}",    # Octal escape sequences
+        ]
+        
+        for pattern in shell_patterns:
+            if re.search(pattern, value):
+                raise ValidationError(
+                    "Value contains shell injection patterns"
+                )
 
         return value
 

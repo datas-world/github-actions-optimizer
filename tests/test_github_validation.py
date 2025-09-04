@@ -160,3 +160,123 @@ class TestGetCurrentRepo:
                 result = get_current_repo()
                 # Should return None when all methods fail
                 assert result is None
+
+
+class TestGitHubSecurityEnhancements:
+    """Test GitHub module security enhancements."""
+
+    def test_gh_cli_timeout_handling(self) -> None:
+        """Test GitHub CLI timeout handling."""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.side_effect = subprocess.TimeoutExpired("gh", 10)
+                result = get_current_repo()
+                assert result is None
+
+    def test_git_remote_timeout_handling(self) -> None:
+        """Test git remote timeout handling."""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.side_effect = [
+                    subprocess.CalledProcessError(1, "gh"),
+                    subprocess.TimeoutExpired("git", 10)
+                ]
+                result = get_current_repo()
+                assert result is None
+
+    def test_gh_cli_validation_error(self) -> None:
+        """Test GitHub CLI with validation error."""
+        mock_result = MagicMock()
+        mock_result.stdout = '{"nameWithOwner": "../../malicious"}'
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.return_value = mock_result
+                result = get_current_repo()
+                # Should return None due to validation failure
+                assert result is None
+
+    def test_git_remote_url_too_long(self) -> None:
+        """Test git remote with URL that's too long."""
+        mock_git_result = MagicMock()
+        # Create a URL that's too long (>2048 chars)
+        long_url = "https://github.com/" + "a" * 3000 + "/repo.git"
+        mock_git_result.stdout = long_url
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.side_effect = [
+                    subprocess.CalledProcessError(1, "gh"),
+                    mock_git_result
+                ]
+                result = get_current_repo()
+                assert result is None
+
+    def test_git_remote_malformed_parts(self) -> None:
+        """Test git remote with malformed GitHub URL parts."""
+        mock_git_result = MagicMock()
+        mock_git_result.stdout = "https://github.com/onlyonepart"  # Missing repo part
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.side_effect = [
+                    subprocess.CalledProcessError(1, "gh"),
+                    mock_git_result
+                ]
+                result = get_current_repo()
+                assert result is None
+
+    def test_git_remote_validation_error(self) -> None:
+        """Test git remote with validation error in parsed repo."""
+        mock_git_result = MagicMock()
+        mock_git_result.stdout = "https://github.com/../malicious/repo.git"
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.side_effect = [
+                    subprocess.CalledProcessError(1, "gh"),
+                    mock_git_result
+                ]
+                result = get_current_repo()
+                assert result is None
+
+    def test_empty_github_repository_env(self) -> None:
+        """Test empty GITHUB_REPOSITORY environment variable."""
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": ""}):
+            with patch('subprocess.run') as mock_run:
+                mock_run.side_effect = subprocess.CalledProcessError(1, "gh")
+                result = get_current_repo()
+                assert result is None
+
+    def test_gh_cli_json_decode_error(self) -> None:
+        """Test GitHub CLI with JSON decode error."""
+        mock_result = MagicMock()
+        mock_result.stdout = "invalid json content"
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.return_value = mock_result
+                result = get_current_repo()
+                assert result is None
+
+    def test_gh_cli_missing_name_with_owner(self) -> None:
+        """Test GitHub CLI response missing nameWithOwner."""
+        mock_result = MagicMock()
+        mock_result.stdout = '{"other_field": "value"}'
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.return_value = mock_result
+                result = get_current_repo()
+                assert result is None
+
+    def test_gh_cli_non_string_name_with_owner(self) -> None:
+        """Test GitHub CLI response with non-string nameWithOwner."""
+        mock_result = MagicMock()
+        mock_result.stdout = '{"nameWithOwner": 123}'
+        
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('subprocess.run') as mock_run:
+                mock_run.return_value = mock_result
+                result = get_current_repo()
+                assert result is None

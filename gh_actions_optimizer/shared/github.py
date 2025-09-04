@@ -33,16 +33,26 @@ def get_current_repo() -> Optional[str]:
             capture_output=True,
             text=True,
             check=True,
+            timeout=10,  # Add timeout for safety
+            env={
+                "PATH": os.environ.get("PATH", ""),
+                "HOME": os.environ.get("HOME", ""),
+                "XDG_CONFIG_HOME": os.environ.get("XDG_CONFIG_HOME", ""),
+            },  # Minimal environment
         )
         repo_info = json.loads(result.stdout)
         repo_raw = repo_info.get("nameWithOwner")
         if repo_raw and isinstance(repo_raw, str):
-            log_info(f"Using gh CLI detected repository: {repo_raw}")
-            return cast(str, repo_raw)
+            # Validate the repository name for security
+            validated_repo = InputValidator.validate_repository_name(repo_raw)
+            log_info(f"Using gh CLI detected repository: {validated_repo}")
+            return validated_repo
     except (
         subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
         json.JSONDecodeError,
         FileNotFoundError,
+        ValidationError,
     ):
         pass
 
@@ -53,18 +63,31 @@ def get_current_repo() -> Optional[str]:
             capture_output=True,
             text=True,
             check=True,
+            timeout=10,  # Add timeout for safety
+            env={"PATH": os.environ.get("PATH", "")},  # Minimal environment
         )
         remote_url = result.stdout.strip()
+        
+        # Validate URL format first
+        if not remote_url or len(remote_url) > 2048:  # Reasonable URL length limit
+            return None
+            
         # Parse GitHub URL to get owner/repo
         if "github.com" in remote_url:
             if remote_url.endswith(".git"):
                 remote_url = remote_url[:-4]
             parts = remote_url.split("/")[-2:]
-            if len(parts) == 2:
+            if len(parts) == 2 and parts[0] and parts[1]:  # Ensure both parts exist and are non-empty
                 repo = f"{parts[0]}/{parts[1]}"
-                log_info(f"Using git remote detected repository: {repo}")
-                return repo
-    except subprocess.CalledProcessError:
+                # Validate the repository name for security
+                try:
+                    validated_repo = InputValidator.validate_repository_name(repo)
+                    log_info(f"Using git remote detected repository: {validated_repo}")
+                    return validated_repo
+                except ValidationError:
+                    # If validation fails, don't return the repo
+                    pass
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValidationError):
         pass
 
     return None
@@ -113,12 +136,39 @@ def get_repo_for_command(args: argparse.Namespace) -> str:
 def run_gh_command(
     args: List[str], check: bool = True
 ) -> subprocess.CompletedProcess[str]:
-    """Run a gh CLI command."""
+    """Run a gh CLI command with enhanced security."""
+    import shutil
+    
+    # Validate all arguments for security
+    for arg in args:
+        if not isinstance(arg, str):
+            log_error("Invalid argument type for GitHub CLI command")
+            sys.exit(1)
+        validate_and_log_error(InputValidator.sanitize_for_shell, arg)
+    
     try:
+        # Ensure gh CLI is available and get its path
+        gh_path = shutil.which("gh")
+        if not gh_path:
+            log_error("GitHub CLI (gh) not found in PATH")
+            sys.exit(1)
+            
         result = subprocess.run(
-            ["gh"] + args, capture_output=True, text=True, check=check
+            [gh_path] + args, 
+            capture_output=True, 
+            text=True, 
+            check=check,
+            timeout=30,  # Add timeout for safety
+            env={
+                "PATH": os.environ.get("PATH", ""),
+                "HOME": os.environ.get("HOME", ""),
+                "XDG_CONFIG_HOME": os.environ.get("XDG_CONFIG_HOME", ""),
+            },  # Minimal environment
         )
         return result
+    except subprocess.TimeoutExpired:
+        log_error("GitHub CLI command timed out")
+        sys.exit(1)
     except subprocess.CalledProcessError as e:
         log_error(f"GitHub CLI command failed: {e}")
         if e.stderr:
@@ -160,7 +210,7 @@ def get_workflows(repo: str) -> List[Dict[str, Any]]:
 
 
 def download_workflow_content(download_url: str) -> str:
-    """Download workflow content from URL."""
+    """Download workflow content from URL with enhanced security."""
     # Validate URL
     validated_url = validate_and_log_error(
         InputValidator.validate_url, 
@@ -168,8 +218,33 @@ def download_workflow_content(download_url: str) -> str:
         ["https"]  # Only allow HTTPS for security
     )
     
+    # Additional security checks for GitHub URLs
+    if "github.com" not in validated_url and "githubusercontent.com" not in validated_url:
+        log_error("URL must be from GitHub or GitHub user content domains")
+        return ""
+    
     try:
-        with urllib.request.urlopen(validated_url) as response:  # nosec B310
+        import ssl
+        # Create secure SSL context
+        context = ssl.create_default_context()
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        
+        request = urllib.request.Request(
+            validated_url,
+            headers={
+                "User-Agent": "github-actions-optimizer/1.0",
+                "Accept": "text/plain, application/x-yaml, text/yaml",
+            }
+        )
+        
+        with urllib.request.urlopen(request, context=context, timeout=30) as response:  # nosec B310
+            # Check content type
+            content_type = response.headers.get("Content-Type", "")
+            if content_type and not any(ct in content_type.lower() for ct in ["text/", "yaml", "yml"]):
+                log_error(f"Invalid content type: {content_type}")
+                return ""
+                
             content_bytes = cast(bytes, response.read())
             content = content_bytes.decode("utf-8")
             
@@ -182,6 +257,6 @@ def download_workflow_content(download_url: str) -> str:
             )
             
             return content
-    except (urllib.error.URLError, UnicodeDecodeError) as e:
+    except (urllib.error.URLError, UnicodeDecodeError, ssl.SSLError) as e:
         log_error(f"Failed to download workflow content: {e}")
         return ""
