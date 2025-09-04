@@ -21,11 +21,7 @@ env:
   PYTHONUNBUFFERED: "1"
   FORCE_COLOR: "1"
 
-permissions:
-  contents: write
-  security-events: write
-  actions: read
-  pull-requests: write
+permissions: {} # Minimal default permissions - jobs will specify their own
 
 jobs:
   pre-commit:
@@ -33,6 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name != 'schedule' || github.event.schedule == '0 4 * * 1'
+    permissions:
+      contents: write # Needed for checkout and auto-update commits
+      actions: read # Needed for GitHub Actions context
 
     steps:
       - name: Checkout repository
@@ -129,6 +128,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: github.event_name != 'schedule' || github.event.schedule == '0 2 * * *'
+    permissions:
+      contents: read # Needed for checkout
+      actions: read # Needed for GitHub Actions context
 
     strategy:
       fail-fast: false
@@ -211,6 +213,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name != 'schedule'
+    permissions:
+      contents: read # Needed for checkout
+      actions: write # Needed for upload artifacts
 
     steps:
       - name: Checkout repository
@@ -249,8 +254,11 @@ jobs:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Skip on PRs to avoid extension pack issues, only run on main branch pushes
-    if: (github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0') && github.event_name != 'pull_request'
+    if: github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0'
+    permissions:
+      contents: read # Needed for checkout
+      security-events: write # Needed for CodeQL analysis results
+      actions: read # Needed for GitHub Actions context
 
     strategy:
       fail-fast: false
@@ -300,6 +308,9 @@ jobs:
     timeout-minutes: 10
     if: github.event_name != 'schedule'
     needs: [test]
+    permissions:
+      contents: read # Needed for checkout
+      actions: write # Needed for upload artifacts
 
     steps:
       - name: Checkout repository
