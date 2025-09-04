@@ -1,11 +1,7 @@
 """Analyze command implementation."""
 
 import argparse
-import json
-import sys
 from typing import Any, Dict, List
-
-import yaml
 
 from ..shared import (
     Colors,

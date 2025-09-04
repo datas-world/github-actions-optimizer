@@ -6,7 +6,6 @@ import sys
 from typing import TextIO
 
 from rich.console import Console
-from rich.text import Text
 
 
 class Colors:
@@ -119,38 +118,37 @@ class Colors:
         return "" if self._should_disable_color() else "\033[0m"
 
 
-# Create a singleton instance
+# Create a singleton instance for backward compatibility
 colors = Colors()
-
-# Backward compatibility - export the instance with the old name
-Colors = colors  # type: ignore[misc]
 
 
 def log_info(message: str) -> None:
     """Log info message to stderr using Rich console."""
-    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console = colors.get_console(sys.stderr)
     console.print(f"[blue][INFO][/blue] {message}", highlight=False)
 
 
 def log_warn(message: str) -> None:
     """Log warning message to stderr using Rich console."""
-    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console = colors.get_console(sys.stderr)
     console.print(f"[yellow][WARN][/yellow] {message}", highlight=False)
 
 
 def log_error(message: str) -> None:
     """Log error message to stderr using Rich console."""
-    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console = colors.get_console(sys.stderr)
     console.print(f"[red][ERROR][/red] {message}", highlight=False)
 
 
 def log_success(message: str) -> None:
     """Log success message to stderr using Rich console."""
-    console = colors.get_console(sys.stderr)  # type: ignore[attr-defined]
+    console = colors.get_console(sys.stderr)
     console.print(f"[green][SUCCESS][/green] {message}", highlight=False)
 
 
-def add_common_args(parser_obj: argparse.ArgumentParser, repo_required: bool = False) -> None:
+def add_common_args(
+    parser_obj: argparse.ArgumentParser, repo_required: bool = False
+) -> None:
     """Add common arguments to a parser."""
     parser_obj.add_argument(
         "-R",
@@ -165,14 +163,11 @@ def add_common_args(parser_obj: argparse.ArgumentParser, repo_required: bool = F
         default="table",
         help="Output format (default: table)",
     )
-    parser_obj.add_argument(
-        "-o", "--output", help="Output file (default: stdout)")
+    parser_obj.add_argument("-o", "--output", help="Output file (default: stdout)")
     parser_obj.add_argument(
         "-v", "--verbose", action="store_true", help="Verbose output"
     )
-    parser_obj.add_argument(
-        "-q", "--quiet", action="store_true", help="Minimal output"
-    )
+    parser_obj.add_argument("-q", "--quiet", action="store_true", help="Minimal output")
     parser_obj.add_argument(
         "-w", "--web", action="store_true", help="Open results in web browser"
     )
@@ -187,11 +182,8 @@ def add_output_args(parser_obj: argparse.ArgumentParser) -> None:
         default="table",
         help="Output format (default: table)",
     )
-    parser_obj.add_argument(
-        "-o", "--output", help="Output file (default: stdout)")
-    parser_obj.add_argument(
-        "-q", "--quiet", action="store_true", help="Minimal output"
-    )
+    parser_obj.add_argument("-o", "--output", help="Output file (default: stdout)")
+    parser_obj.add_argument("-q", "--quiet", action="store_true", help="Minimal output")
 
 
 def check_dependencies() -> None:

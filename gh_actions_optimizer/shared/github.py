@@ -69,12 +69,9 @@ def validate_repo(repo: Optional[str]) -> str:
         repo = get_current_repo()
         if not repo:
             log_error(
-                "No repository specified and unable to detect current "
-                "repository"
+                "No repository specified and unable to detect current " "repository"
             )
-            log_info(
-                "Use --repo owner/repo or run from within a GitHub repository"
-            )
+            log_info("Use --repo owner/repo or run from within a GitHub repository")
             log_info("Or use --sample-data to test with sample data")
             sys.exit(1)
         log_info(f"Using current repository: {repo}")
@@ -104,12 +101,9 @@ def get_repo_for_command(args: argparse.Namespace) -> str:
         repo = get_current_repo()
         if not repo:
             log_error(
-                "No repository specified and unable to detect current "
-                "repository"
+                "No repository specified and unable to detect current " "repository"
             )
-            log_info(
-                "Use --repo owner/repo, run from within a GitHub repository,"
-            )
+            log_info("Use --repo owner/repo, run from within a GitHub repository,")
             log_info("or use --sample-data to test with sample data")
             sys.exit(1)
 
@@ -149,8 +143,7 @@ def get_workflows(repo: str) -> List[Dict[str, Any]]:
 
     if result.returncode != 0:
         log_error(
-            "Failed to fetch workflows. Check repository access and "
-            "permissions."
+            "Failed to fetch workflows. Check repository access and " "permissions."
         )
         return []
 

@@ -22,17 +22,13 @@ def analyze_workflow(content: str, name: str) -> Dict[str, Any]:
     # Check for missing concurrency controls
     if "concurrency:" not in content:
         issues.append("Missing concurrency controls")
-        recommendations.append(
-            "Add concurrency controls to prevent redundant runs"
-        )
+        recommendations.append("Add concurrency controls to prevent redundant runs")
 
     # Check for missing cache
     setup_actions = ["setup-node", "setup-python", "setup-java", "setup-go"]
     if any(action in content for action in setup_actions) and "cache:" not in content:
         issues.append("Missing dependency caching")
-        recommendations.append(
-            "Enable caching for faster builds and reduced costs"
-        )
+        recommendations.append("Enable caching for faster builds and reduced costs")
 
     # Check for security issues
     if "pull_request_target" in content:
@@ -43,8 +39,7 @@ def analyze_workflow(content: str, name: str) -> Dict[str, Any]:
 
     # Check for hardcoded secrets
     if "${{" in content and any(
-        secret in content.upper()
-        for secret in ["PASSWORD", "TOKEN", "KEY", "SECRET"]
+        secret in content.upper() for secret in ["PASSWORD", "TOKEN", "KEY", "SECRET"]
     ):
         issues.append("Potential hardcoded secrets detected")
         recommendations.append(

@@ -59,26 +59,20 @@ def generate_sample_security_issues() -> list[dict[str, Any]]:
     return [
         {
             "workflow": "ci.yml",
-            "issues": [
-                "Missing explicit permissions",
-                "Missing timeout configuration"
-            ],
-            "severity": "MEDIUM"
+            "issues": ["Missing explicit permissions", "Missing timeout configuration"],
+            "severity": "MEDIUM",
         },
         {
             "workflow": "deploy.yml",
             "issues": [
                 "Direct secrets usage detected",
-                "Action not pinned to specific version: actions/checkout@main"
+                "Action not pinned to specific version: actions/checkout@main",
             ],
-            "severity": "HIGH"
+            "severity": "HIGH",
         },
         {
             "workflow": "security.yml",
-            "issues": [
-                "Uses expensive macOS runners",
-                "Missing concurrency control"
-            ],
-            "severity": "MEDIUM"
-        }
+            "issues": ["Uses expensive macOS runners", "Missing concurrency control"],
+            "severity": "MEDIUM",
+        },
     ]
