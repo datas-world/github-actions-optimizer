@@ -1,10 +1,10 @@
 # GitHub Actions Optimizer
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![CI](https://github.com/datas-world/github-actions-optimizer/workflows/CI/badge.svg)](https://github.com/datas-world/github-actions-optimizer/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/datas-world/github-actions-optimizer/workflows/CodeQL%20Analysis/badge.svg)](https://github.com/datas-world/github-actions-optimizer/actions/workflows/codeql.yml)
-[![Pre-commit](https://github.com/datas-world/github-actions-optimizer/workflows/Pre-commit/badge.svg)](https://github.com/datas-world/github-actions-optimizer/actions/workflows/pre-commit.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/datas-world/github-actions-optimizer/workflows/Main%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/datas-world/github-actions-optimizer/actions/workflows/main.yml)
+[![CodeQL](https://github.com/datas-world/github-actions-optimizer/workflows/Main%20CI%2FCD%20Pipeline/badge.svg)](https://github.com/datas-world/github-actions-optimizer/actions/workflows/main.yml)
+[![Workflow Tracker](https://github.com/datas-world/github-actions-optimizer/workflows/Workflow%20Failure%20Tracker/badge.svg)](https://github.com/datas-world/github-actions-optimizer/actions/workflows/workflow-failure-tracker.yml)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=datas-world_github-actions-optimizer&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=datas-world_github-actions-optimizer)
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=datas-world_github-actions-optimizer&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=datas-world_github-actions-optimizer)
 [![GitHub CLI Extension](https://img.shields.io/badge/GitHub%20CLI-Extension-brightgreen)](https://cli.github.com/)
@@ -33,7 +33,7 @@ A comprehensive GitHub CLI extension for optimizing GitHub Actions workflows thr
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.10+
 - [GitHub CLI (gh)](https://cli.github.com/) installed and authenticated
 - `jq` command-line JSON processor
 
