@@ -69,7 +69,8 @@ def cmd_runners(args: argparse.Namespace) -> None:
 
     if args.web:
         webbrowser.open(
-            "https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners"
+            "https://docs.github.com/en/actions/using-github-hosted-runners/"
+            "about-github-hosted-runners"
         )
         log_success("Opened GitHub Actions documentation in web browser")
 
