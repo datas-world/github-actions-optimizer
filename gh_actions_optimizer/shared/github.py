@@ -9,7 +9,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional, cast
 
 from .cli import log_error, log_info
-from .validation import InputValidator, validate_and_log_error
+from .validation import InputValidator, ValidationError, validate_and_log_error
 
 
 def get_current_repo() -> Optional[str]:
@@ -17,8 +17,14 @@ def get_current_repo() -> Optional[str]:
     # First try GitHub Actions environment variables
     github_repository = os.environ.get("GITHUB_REPOSITORY")
     if github_repository:
-        log_info(f"Using GitHub Actions repository: {github_repository}")
-        return github_repository
+        # Validate the environment variable value for security
+        try:
+            validated_repo = InputValidator.validate_repository_name(github_repository)
+            log_info(f"Using GitHub Actions repository: {validated_repo}")
+            return validated_repo
+        except ValidationError:
+            # If env var is invalid, fall through to other detection methods
+            pass
 
     try:
         # Try gh CLI second

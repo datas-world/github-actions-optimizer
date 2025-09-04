@@ -33,12 +33,21 @@ class Colors:
     def _should_force_color(self) -> bool:
         """Check if color output should be forced."""
         force_color = os.environ.get("FORCE_COLOR", "")
+        # Basic sanitization for safety
+        if force_color and not force_color.replace("_", "").replace("-", "").isalnum():
+            return False
         return force_color in ("1", "true", "True", "TRUE")
 
     def _should_disable_color(self) -> bool:
         """Check if color output should be disabled."""
         no_color = os.environ.get("NO_COLOR", "")
         force_color = os.environ.get("FORCE_COLOR", "")
+        
+        # Basic sanitization for safety
+        if no_color and not no_color.replace("_", "").replace("-", "").isalnum():
+            no_color = ""
+        if force_color and not force_color.replace("_", "").replace("-", "").isalnum():
+            force_color = ""
 
         # FORCE_COLOR=0 explicitly disables color
         if force_color == "0":
