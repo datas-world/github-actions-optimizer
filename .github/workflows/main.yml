@@ -235,6 +235,8 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
+          # Disable extension packs to prevent PR diff range issues
+          packs: ""
         env:
           # Skip PR diff analysis to avoid "undefined" errors in complex merge scenarios
           CODEQL_ACTION_FEATURE_ANALYSIS_FILTER: false
