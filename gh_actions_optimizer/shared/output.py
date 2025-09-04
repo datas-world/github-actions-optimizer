@@ -1,10 +1,9 @@
 """Output formatting and web browser utilities."""
 
 import json
-import subprocess  # nosec B404
 import sys
 import webbrowser
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import yaml
 

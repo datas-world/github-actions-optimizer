@@ -3,12 +3,16 @@
 import argparse
 import json
 
-from ...shared import log_info, log_success, Colors
+from ...shared import Colors, log_info, log_success
 
 
 def cmd_validate_runners(args: argparse.Namespace) -> None:
     """Validate runner configurations."""
-    from ...shared.github import get_repo_for_command, get_workflows, download_workflow_content
+    from ...shared.github import (
+        download_workflow_content,
+        get_repo_for_command,
+        get_workflows,
+    )
 
     repo = get_repo_for_command(args)
 
@@ -49,19 +53,18 @@ def cmd_validate_runners(args: argparse.Namespace) -> None:
         validation_results = [
             {
                 "workflow": "CI Pipeline",
-                "issues": ["Missing timeout configuration", "Missing concurrency control"],
-                "status": "FAIL"
+                "issues": [
+                    "Missing timeout configuration",
+                    "Missing concurrency control",
+                ],
+                "status": "FAIL",
             },
-            {
-                "workflow": "Release",
-                "issues": [],
-                "status": "PASS"
-            },
+            {"workflow": "Release", "issues": [], "status": "PASS"},
             {
                 "workflow": "Tests",
                 "issues": ["Uses expensive macOS runners"],
-                "status": "FAIL"
-            }
+                "status": "FAIL",
+            },
         ]
 
     if args.format == "json":

@@ -45,8 +45,6 @@ def estimate_monthly_cost(
 ) -> float:
     """Estimate monthly cost for a workflow."""
     costs = get_runner_costs()
-    cost_per_run = calculate_workflow_cost(
-        runner_type, avg_duration_minutes, costs
-    )
+    cost_per_run = calculate_workflow_cost(runner_type, avg_duration_minutes, costs)
     monthly_runs = daily_runs * 30
     return cost_per_run * monthly_runs

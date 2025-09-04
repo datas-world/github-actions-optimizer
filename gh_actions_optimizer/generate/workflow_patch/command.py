@@ -3,7 +3,7 @@
 import argparse
 import json
 
-from ...shared import log_info, log_success, Colors
+from ...shared import Colors, log_info, log_success
 
 
 def cmd_generate_workflow_patch(args: argparse.Namespace) -> None:
