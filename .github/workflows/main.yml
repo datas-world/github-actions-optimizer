@@ -294,6 +294,223 @@ jobs:
         with:
           category: "/language:${{matrix.language}}"
 
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          # Install jq for JSON processing
+          sudo apt-get update
+          sudo apt-get install -y jq
+        run: |
+          pytest --cov --cov-report=xml --cov-report=term-missing tests/
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@e44258b109568baa0df60ed515909fc6c72cba92 # v2.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=datas-world_github-actions-optimizer
+            -Dsonar.organization=datas-world
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=gh_actions_optimizer
+            -Dsonar.tests=tests
+            -Dsonar.python.xunit.reportPath=pytest.xml
+
+  quality-summary:
+    name: Quality Summary for PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    needs: [test, sonarcloud]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install system dependencies
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Get SonarCloud quality gate status
+        id: sonar-quality
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get SonarCloud quality gate status using GitHub CLI
+          PROJECT_KEY="datas-world_github-actions-optimizer"
+
+          # Check quality gate status via SonarCloud API
+          QUALITY_GATE_STATUS=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=${PROJECT_KEY}&pullRequest=${{ github.event.number }}" | \
+            jq -r '.projectStatus.status // "ERROR"')
+
+          echo "quality_gate_status=${QUALITY_GATE_STATUS}" >> $GITHUB_OUTPUT
+          echo "SonarCloud Quality Gate Status: ${QUALITY_GATE_STATUS}"
+
+          # Get detailed metrics
+          COVERAGE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/measures/component?component=${PROJECT_KEY}&pullRequest=${{ github.event.number }}&metricKeys=coverage" | \
+            jq -r '.component.measures[0].value // "N/A"')
+          echo "sonar_coverage=${COVERAGE}" >> $GITHUB_OUTPUT
+
+          BUGS=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/measures/component?component=${PROJECT_KEY}&pullRequest=${{ github.event.number }}&metricKeys=bugs" | \
+            jq -r '.component.measures[0].value // "0"')
+          echo "sonar_bugs=${BUGS}" >> $GITHUB_OUTPUT
+
+          VULNERABILITIES=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/measures/component?component=${PROJECT_KEY}&pullRequest=${{ github.event.number }}&metricKeys=vulnerabilities" | \
+            jq -r '.component.measures[0].value // "0"')
+          echo "sonar_vulnerabilities=${VULNERABILITIES}" >> $GITHUB_OUTPUT
+
+          CODE_SMELLS=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/measures/component?component=${PROJECT_KEY}&pullRequest=${{ github.event.number }}&metricKeys=code_smells" | \
+            jq -r '.component.measures[0].value // "0"')
+          echo "sonar_code_smells=${CODE_SMELLS}" >> $GITHUB_OUTPUT
+
+      - name: Get Codecov status
+        id: codecov-status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Wait a bit for Codecov to process the coverage report
+          sleep 30
+
+          # Get Codecov coverage status
+          CODECOV_API="https://codecov.io/api/v2/github/${{ github.repository }}/pulls/${{ github.event.number }}"
+
+          # Try to get coverage data from Codecov API
+          COVERAGE_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.CODECOV_TOKEN }}" "${CODECOV_API}" || echo "{}")
+
+          CODECOV_COVERAGE=$(echo "$COVERAGE_RESPONSE" | jq -r '.results.totals.coverage // "N/A"')
+          echo "codecov_coverage=${CODECOV_COVERAGE}" >> $GITHUB_OUTPUT
+          echo "Codecov Coverage: ${CODECOV_COVERAGE}%"
+
+      - name: Create or update PR comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_QUALITY_GATE: ${{ steps.sonar-quality.outputs.quality_gate_status }}
+          SONAR_COVERAGE: ${{ steps.sonar-quality.outputs.sonar_coverage }}
+          SONAR_BUGS: ${{ steps.sonar-quality.outputs.sonar_bugs }}
+          SONAR_VULNERABILITIES: ${{ steps.sonar-quality.outputs.sonar_vulnerabilities }}
+          SONAR_CODE_SMELLS: ${{ steps.sonar-quality.outputs.sonar_code_smells }}
+          CODECOV_COVERAGE: ${{ steps.codecov-status.outputs.codecov_coverage }}
+        run: |
+          # Comment identifier for upsert functionality
+          COMMENT_IDENTIFIER="<!-- quality-summary-comment -->"
+
+          # Determine if there are quality issues
+          ISSUES_FOUND="false"
+
+          if [ "$SONAR_QUALITY_GATE" != "OK" ] || [ "$SONAR_BUGS" != "0" ] || [ "$SONAR_VULNERABILITIES" != "0" ]; then
+            ISSUES_FOUND="true"
+          fi
+
+          # Only create/update comment if there are quality issues
+          if [ "$ISSUES_FOUND" = "true" ]; then
+            # Create comment body
+            cat > comment_body.md << 'COMMENT_EOF'
+          ${COMMENT_IDENTIFIER}
+          ## 🔍 Code Quality Summary
+          
+          **@copilot** Please review the following quality findings and provide remediation suggestions.
+          
+          ### SonarCloud Analysis
+          
+          | Metric | Value | Status |
+          |--------|-------|--------|
+          | Quality Gate | ${SONAR_QUALITY_GATE} | $([ "$SONAR_QUALITY_GATE" = "OK" ] && echo "✅ Passed" || echo "❌ Failed") |
+          | Coverage | ${SONAR_COVERAGE}% | $([ "$SONAR_COVERAGE" != "N/A" ] && [ "${SONAR_COVERAGE%.*}" -lt 80 ] 2>/dev/null && echo "⚠️ Below Target" || echo "✅ Good") |
+          | Bugs | ${SONAR_BUGS} | $([ "$SONAR_BUGS" = "0" ] && echo "✅ None" || echo "❌ Found") |
+          | Vulnerabilities | ${SONAR_VULNERABILITIES} | $([ "$SONAR_VULNERABILITIES" = "0" ] && echo "✅ None" || echo "🔴 Found") |
+          | Code Smells | ${SONAR_CODE_SMELLS} | $([ "$SONAR_CODE_SMELLS" = "0" ] && echo "✅ None" || echo "⚠️ Found") |
+          
+          ### Codecov Analysis
+          
+          | Metric | Value |
+          |--------|-------|
+          | Coverage | ${CODECOV_COVERAGE}% |
+          
+          ### Recommendations
+          
+          - **Review critical issues**: Address bugs and vulnerabilities immediately
+          - **Improve test coverage**: Aim for at least 80% code coverage
+          - **Code quality**: Fix code smells to improve maintainability
+          
+          ---
+          
+          ### Zusammenfassung der Codequalität (German)
+          
+          **@copilot** Bitte überprüfen Sie die folgenden Qualitätsbefunde und geben Sie Empfehlungen zur Behebung.
+          
+          **SonarCloud-Analyse:**
+          - Qualitätstor: ${SONAR_QUALITY_GATE}
+          - Testabdeckung: ${SONAR_COVERAGE}%
+          - Fehler: ${SONAR_BUGS}
+          - Sicherheitslücken: ${SONAR_VULNERABILITIES}
+          - Code-Smells: ${SONAR_CODE_SMELLS}
+          
+          **Empfehlungen:**
+          - Kritische Probleme sofort beheben
+          - Testabdeckung auf mindestens 80% erhöhen
+          - Code-Qualität durch Behebung von Code-Smells verbessern
+          
+          ---
+          
+          *This comment is automatically updated when quality scans complete.*
+          COMMENT_EOF
+
+            # Substitute environment variables
+            envsubst < comment_body.md > comment_body_final.md
+
+            # Check for existing comment
+            EXISTING_COMMENT_ID=$(gh pr view ${{ github.event.number }} --json comments \
+              --jq '.comments[] | select(.body | contains("quality-summary-comment")) | .id' | head -1)
+
+            if [ -n "$EXISTING_COMMENT_ID" ]; then
+              # Update existing comment
+              gh api -X PATCH "/repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" \
+                -f body="$(cat comment_body_final.md)"
+              echo "Updated existing quality summary comment #${EXISTING_COMMENT_ID}"
+            else
+              # Create new comment
+              gh pr comment ${{ github.event.number }} --body-file comment_body_final.md
+              echo "Created new quality summary comment"
+            fi
+          else
+            echo "No quality issues found, skipping comment creation"
+
+            # Remove existing comment if no issues found
+            EXISTING_COMMENT_ID=$(gh pr view ${{ github.event.number }} --json comments \
+              --jq '.comments[] | select(.body | contains("quality-summary-comment")) | .id' | head -1)
+
+            if [ -n "$EXISTING_COMMENT_ID" ]; then
+              gh api -X DELETE "/repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}"
+              echo "Removed quality summary comment as no issues were found"
+            fi
+          fi
+
   extension-bundle:
     name: Create GitHub CLI Extension Bundle
     runs-on: ubuntu-latest
