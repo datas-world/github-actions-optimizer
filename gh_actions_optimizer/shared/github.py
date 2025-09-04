@@ -250,6 +250,9 @@ def get_github_token_scopes() -> List[str]:
                     return scopes
             
             return []
+        
+        # Return empty list if no token found
+        return []
             
     except subprocess.CalledProcessError:
         log_error("Failed to retrieve GitHub token information")

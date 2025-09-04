@@ -143,3 +143,90 @@ class TestUtilityFunctions:
         result = sanitize_subprocess_output(output, command_args)
         assert "ghp_" not in result
         assert "[REDACTED]" in result
+
+    def test_sanitize_subprocess_output_auth_command(self):
+        """Test subprocess output sanitization for auth commands."""
+        output = "token: ghp_1234567890abcdef\nuser: testuser"
+        command_args = ["gh", "auth", "login"]
+        
+        result = sanitize_subprocess_output(output, command_args)
+        assert "[REDACTED]" in result
+        assert "ghp_" not in result
+        assert "user: [REDACTED]" in result
+
+    def test_security_sanitizer_edge_cases(self):
+        """Test security sanitizer edge cases."""
+        sanitizer = SecuritySanitizer()
+        
+        # Test empty text
+        assert sanitizer.sanitize_text("") == ""
+        assert sanitizer.sanitize_text(None) == None
+        
+        # Test dict with non-dict input
+        assert sanitizer.sanitize_dict("not a dict") == "not a dict"
+        
+        # Test is_sensitive_key method
+        assert sanitizer.is_sensitive_key("password")
+        assert sanitizer.is_sensitive_key("secret_key")
+        assert sanitizer.is_sensitive_key("api_token")
+        assert sanitizer.is_sensitive_key("auth_header")
+        assert sanitizer.is_sensitive_key("my_credential_data")
+        assert not sanitizer.is_sensitive_key("username")
+        assert not sanitizer.is_sensitive_key("public_data")
+
+    def test_sanitize_dict_with_lists(self):
+        """Test sanitization of dictionaries with lists containing sensitive data."""
+        sanitizer = SecuritySanitizer()
+        
+        test_dict = {
+            "config": [
+                {"token": "ghp_secret123", "name": "config1"},
+                "plain string with token: ghp_secret456",
+                {"normal": "data"}
+            ]
+        }
+        
+        result = sanitizer.sanitize_dict(test_dict)
+        assert result["config"][0]["token"] == "[REDACTED]"
+        assert "[REDACTED]" in result["config"][1]
+        assert "ghp_secret456" not in result["config"][1]
+        assert result["config"][2]["normal"] == "data"
+
+    def test_get_secure_env_var(self):
+        """Test secure environment variable retrieval."""
+        import os
+        from unittest.mock import patch
+        from gh_actions_optimizer.shared.security import get_secure_env_var
+        
+        # Test with existing env var
+        with patch.dict(os.environ, {"TEST_VAR": "test_value"}):
+            result = get_secure_env_var("TEST_VAR")
+            assert result == "test_value"
+        
+        # Test with non-existing env var and default
+        with patch.dict(os.environ, {}, clear=True):
+            result = get_secure_env_var("NONEXISTENT", "default")
+            assert result == "default"
+        
+        # Test with non-existing env var and no default
+        with patch.dict(os.environ, {}, clear=True):
+            result = get_secure_env_var("NONEXISTENT")
+            assert result == ""
+
+    def test_sanitizer_patterns_comprehensive(self):
+        """Test comprehensive pattern matching in sanitizer."""
+        sanitizer = SecuritySanitizer()
+        
+        # Test various token patterns
+        test_cases = [
+            "password=mysecret123",
+            "secret: topsecret",
+            "AKIA1234567890123456",  # AWS access key
+            "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----",
+            "Bearer abc123def456",
+            "Authorization: Basic dXNlcjpwYXNz",
+        ]
+        
+        for test_case in test_cases:
+            result = sanitizer.sanitize_text(test_case)
+            assert "[REDACTED]" in result
