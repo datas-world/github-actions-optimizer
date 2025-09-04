@@ -235,11 +235,12 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
-          # Disable extension packs to prevent PR diff range issues
-          packs: ""
+          config: |
+            disable-default-path-filters: true
         env:
-          # Skip PR diff analysis to avoid "undefined" errors in complex merge scenarios
+          # Completely disable PR diff analysis and extension packs
           CODEQL_ACTION_FEATURE_ANALYSIS_FILTER: false
+          CODEQL_ACTION_FEATURE_WILL_UPLOAD: true
 
       - name: Set up Python
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
