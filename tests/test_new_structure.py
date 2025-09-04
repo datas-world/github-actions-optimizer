@@ -8,12 +8,12 @@ import pytest
 
 
 @pytest.fixture
-def new_extension_path():
+def new_extension_path() -> Path:
     """Return the path to the new gh-actions-optimizer extension."""
     return Path(__file__).parent.parent / "gh-actions-optimizer"
 
 
-def test_new_extension_executable(new_extension_path):
+def test_new_extension_executable(new_extension_path: Path) -> None:
     """Test that the new extension is executable."""
     assert new_extension_path.exists()
     assert new_extension_path.is_file()
@@ -21,7 +21,7 @@ def test_new_extension_executable(new_extension_path):
     assert new_extension_path.stat().st_mode & 0o111
 
 
-def test_new_extension_help(new_extension_path):
+def test_new_extension_help(new_extension_path: Path) -> None:
     """Test that the new extension shows help."""
     result = subprocess.run(
         [sys.executable, str(new_extension_path), "--help"],
@@ -38,7 +38,7 @@ def test_new_extension_help(new_extension_path):
     assert "runners" in result.stdout
 
 
-def test_new_extension_version(new_extension_path):
+def test_new_extension_version(new_extension_path: Path) -> None:
     """Test that the new extension shows version."""
     result = subprocess.run(
         [sys.executable, str(new_extension_path), "--version"],
@@ -52,7 +52,7 @@ def test_new_extension_version(new_extension_path):
     assert "v0.1.0-dev" in result.stdout
 
 
-def test_new_cost_command(new_extension_path):
+def test_new_cost_command(new_extension_path: Path) -> None:
     """Test the cost command with new structure."""
     result = subprocess.run(
         [sys.executable, str(new_extension_path), "cost", "--format", "json"],
@@ -66,7 +66,7 @@ def test_new_cost_command(new_extension_path):
     assert "ubuntu-latest" in result.stdout
 
 
-def test_new_analyze_sample_data(new_extension_path):
+def test_new_analyze_sample_data(new_extension_path: Path) -> None:
     """Test the analyze command with sample data."""
     result = subprocess.run(
         [
@@ -87,7 +87,7 @@ def test_new_analyze_sample_data(new_extension_path):
     assert "sample/repo" in result.stdout
 
 
-def test_package_imports():
+def test_package_imports() -> None:
     """Test that the package can be imported correctly."""
     try:
         import gh_actions_optimizer
@@ -99,7 +99,7 @@ def test_package_imports():
         pytest.fail(f"Failed to import package: {e}")
 
 
-def test_subpackage_imports():
+def test_subpackage_imports() -> None:
     """Test that subpackages can be imported."""
     try:
         from gh_actions_optimizer.analyze import cmd_analyze
@@ -119,7 +119,7 @@ def test_subpackage_imports():
         pytest.fail(f"Failed to import subpackages: {e}")
 
 
-def test_implemented_commands(new_extension_path):
+def test_implemented_commands(new_extension_path: Path) -> None:
     """Test that all commands are now implemented and working."""
     commands = ["security", "runners", "benchmark"]
 

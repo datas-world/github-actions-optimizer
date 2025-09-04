@@ -1,0 +1,34 @@
+name: Auto-Approve Workflows
+
+on:
+  workflow_run:
+    workflows: ["Main CI/CD Pipeline"]
+    types:
+      - requested
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  auto-approve:
+    name: Auto-Approve Workflow Runs
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.event != 'pull_request' || github.actor == 'dependabot[bot]' }}
+    timeout-minutes: 5
+
+    steps:
+      - name: Auto-approve workflow run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          echo "Auto-approving workflow run #${RUN_ID}"
+          
+          # Approve the workflow run if it requires approval
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/actions/runs/${RUN_ID}/approve" \
+            --silent || echo "Workflow run may not require approval or already approved"
+          
+          echo "Auto-approval completed for workflow run #${RUN_ID}"

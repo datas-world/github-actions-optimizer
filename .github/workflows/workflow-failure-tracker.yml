@@ -4,6 +4,9 @@ on:
   workflow_run:
     types:
       - completed
+  schedule:
+    # Self-monitoring: check for our own failures every hour
+    - cron: '0 * * * *'
 
 permissions:
   contents: read
@@ -14,7 +17,7 @@ jobs:
   track-failures:
     name: Track Workflow Failures
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.event != 'pull_request_review' && github.event.workflow_run.event != 'pull_request_review_comment' && github.event.workflow_run.event != 'pull_request_target' }}
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.event != 'pull_request_review' && github.event.workflow_run.event != 'pull_request_review_comment' && github.event.workflow_run.event != 'pull_request_target') || github.event_name == 'schedule' }}
     timeout-minutes: 10
 
     steps:
@@ -24,16 +27,47 @@ jobs:
       - name: Get workflow run details
         id: workflow-details
         run: |
-          echo "workflow_name=${{ github.event.workflow_run.name }}" >> $GITHUB_OUTPUT
-          echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-          echo "workflow_url=${{ github.event.workflow_run.html_url }}" >> $GITHUB_OUTPUT
-          echo "workflow_head_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-          echo "workflow_head_branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
-          echo "workflow_event=${{ github.event.workflow_run.event }}" >> $GITHUB_OUTPUT
-          echo "workflow_created_at=${{ github.event.workflow_run.created_at }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Regular workflow_run event
+            echo "workflow_name=${{ github.event.workflow_run.name }}" >> $GITHUB_OUTPUT
+            echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+            echo "workflow_url=${{ github.event.workflow_run.html_url }}" >> $GITHUB_OUTPUT
+            echo "workflow_head_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "workflow_head_branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
+            echo "workflow_event=${{ github.event.workflow_run.event }}" >> $GITHUB_OUTPUT
+            echo "workflow_created_at=${{ github.event.workflow_run.created_at }}" >> $GITHUB_OUTPUT
+          else
+            # Scheduled self-monitoring
+            echo "Self-monitoring mode: checking for our own failures"
+            
+            # Check for failures in workflow tracking and monitoring workflows
+            FAILED_WORKFLOWS=$(gh api \
+              "/repos/${{ github.repository }}/actions/workflows" \
+              --jq '.workflows[] | select(.name | test("Workflow.*Tracker|Auto-Approve|Status Monitor")) | .id')
+            
+            for workflow_id in $FAILED_WORKFLOWS; do
+              LATEST_FAILED=$(gh api \
+                "/repos/${{ github.repository }}/actions/workflows/${workflow_id}/runs?status=failure&per_page=1" \
+                --jq '.workflow_runs[0] // empty')
+              
+              if [ -n "$LATEST_FAILED" ]; then
+                workflow_name=$(echo "$LATEST_FAILED" | jq -r '.name')
+                echo "Found failed workflow: $workflow_name"
+                echo "workflow_name=${workflow_name}" >> $GITHUB_OUTPUT
+                echo "workflow_run_id=$(echo "$LATEST_FAILED" | jq -r '.id')" >> $GITHUB_OUTPUT
+                echo "workflow_url=$(echo "$LATEST_FAILED" | jq -r '.html_url')" >> $GITHUB_OUTPUT
+                echo "workflow_head_sha=$(echo "$LATEST_FAILED" | jq -r '.head_sha')" >> $GITHUB_OUTPUT
+                echo "workflow_head_branch=$(echo "$LATEST_FAILED" | jq -r '.head_branch')" >> $GITHUB_OUTPUT
+                echo "workflow_event=$(echo "$LATEST_FAILED" | jq -r '.event')" >> $GITHUB_OUTPUT
+                echo "workflow_created_at=$(echo "$LATEST_FAILED" | jq -r '.created_at')" >> $GITHUB_OUTPUT
+                break
+              fi
+            done
+          fi
 
       - name: Check for existing issue
         id: check-issue
+        if: ${{ steps.workflow-details.outputs.workflow_name != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_NAME: ${{ steps.workflow-details.outputs.workflow_name }}
@@ -54,7 +88,7 @@ jobs:
           fi
 
       - name: Create new issue
-        if: steps.check-issue.outputs.issue_exists == 'false'
+        if: steps.check-issue.outputs.issue_exists == 'false' && steps.workflow-details.outputs.workflow_name != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_NAME: ${{ steps.workflow-details.outputs.workflow_name }}
@@ -109,7 +143,7 @@ jobs:
           echo "Created new issue #$ISSUE_NUMBER"
 
       - name: Update existing issue
-        if: steps.check-issue.outputs.issue_exists == 'true'
+        if: steps.check-issue.outputs.issue_exists == 'true' && steps.workflow-details.outputs.workflow_name != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ steps.check-issue.outputs.issue_number }}

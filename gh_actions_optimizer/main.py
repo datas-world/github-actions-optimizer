@@ -4,7 +4,12 @@ import argparse
 import sys
 
 from . import __description__, __name__, __version__
-from .shared import add_common_args, add_output_args, check_dependencies, log_error
+from .shared import (
+    add_common_args,
+    add_output_args,
+    check_dependencies,
+    log_error,
+)
 
 
 def create_parser() -> argparse.ArgumentParser:

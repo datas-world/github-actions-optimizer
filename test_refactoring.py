@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def test_imports():
+def test_imports() -> bool:
     """Test package imports."""
     print("Testing package imports...")
 
@@ -27,7 +27,7 @@ def test_imports():
         return False
 
 
-def test_entry_point():
+def test_entry_point() -> bool:
     """Test the entry point."""
     print("\nTesting entry point...")
 
@@ -87,7 +87,7 @@ def test_entry_point():
     return True
 
 
-def main():
+def main() -> int:
     """Run all tests."""
     print("=== Testing Refactored GitHub Actions Optimizer ===\n")
 
