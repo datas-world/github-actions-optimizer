@@ -9,6 +9,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional, cast
 
 from .cli import log_error, log_info
+from .validation import InputValidator, validate_and_log_error
 
 
 def get_current_repo() -> Optional[str]:
@@ -76,16 +77,9 @@ def validate_repo(repo: Optional[str]) -> str:
             sys.exit(1)
         log_info(f"Using current repository: {repo}")
 
-    if "/" not in repo:
-        log_error("Invalid repository format. Expected: owner/repo")
-        sys.exit(1)
-
-    parts = repo.split("/")
-    if len(parts) != 2 or not all(part.strip() for part in parts):
-        log_error("Invalid repository format. Expected: owner/repo")
-        sys.exit(1)
-
-    return repo
+    # Use comprehensive validation
+    validated_repo = validate_and_log_error(InputValidator.validate_repository_name, repo)
+    return cast(str, validated_repo)
 
 
 def get_repo_for_command(args: argparse.Namespace) -> str:
@@ -161,10 +155,26 @@ def get_workflows(repo: str) -> List[Dict[str, Any]]:
 
 def download_workflow_content(download_url: str) -> str:
     """Download workflow content from URL."""
+    # Validate URL
+    validated_url = validate_and_log_error(
+        InputValidator.validate_url, 
+        download_url, 
+        ["https"]  # Only allow HTTPS for security
+    )
+    
     try:
-        with urllib.request.urlopen(download_url) as response:  # nosec B310
+        with urllib.request.urlopen(validated_url) as response:  # nosec B310
             content_bytes = cast(bytes, response.read())
             content = content_bytes.decode("utf-8")
+            
+            # Validate content size
+            validate_and_log_error(
+                InputValidator.validate_input_length,
+                content,
+                InputValidator.MAX_CONTENT_LENGTH,
+                "Workflow content"
+            )
+            
             return content
     except (urllib.error.URLError, UnicodeDecodeError) as e:
         log_error(f"Failed to download workflow content: {e}")

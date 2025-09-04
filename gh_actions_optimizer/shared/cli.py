@@ -7,6 +7,8 @@ from typing import TextIO
 
 from rich.console import Console
 
+from .validation import InputValidator, validate_and_log_error
+
 
 class Colors:
     """Intelligent color handling with automatic terminal capability detection."""
@@ -203,3 +205,34 @@ def check_dependencies() -> None:
         log_error(f"Missing required dependencies: {', '.join(missing)}")
         log_info("Please install the missing dependencies and try again.")
         sys.exit(1)
+
+
+def validate_parsed_args(args: argparse.Namespace) -> None:
+    """Validate parsed command-line arguments for security."""
+    # Validate repository if provided
+    if hasattr(args, "repo") and args.repo:
+        validate_and_log_error(InputValidator.validate_repository_name, args.repo)
+    
+    # Validate output file path if provided
+    if hasattr(args, "output") and args.output:
+        validate_and_log_error(InputValidator.validate_file_path, args.output, True)
+        validate_and_log_error(InputValidator.validate_filename, 
+                             os.path.basename(args.output))
+    
+    # Validate workflow file path if provided (for workflow-patch command)
+    if hasattr(args, "workflow") and args.workflow:
+        validate_and_log_error(InputValidator.validate_file_path, args.workflow, True)
+        validate_and_log_error(InputValidator.validate_file_extension,
+                             args.workflow, [".yml", ".yaml"])
+    
+    # Validate format argument
+    if hasattr(args, "format") and args.format:
+        if args.format not in ["table", "json", "yaml"]:
+            log_error(f"Invalid format: {args.format}")
+            sys.exit(1)
+    
+    # Validate duration for benchmark command
+    if hasattr(args, "duration") and args.duration is not None:
+        if not isinstance(args.duration, int) or args.duration < 1 or args.duration > 365:
+            log_error("Duration must be between 1 and 365 days")
+            sys.exit(1)

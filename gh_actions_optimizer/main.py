@@ -9,6 +9,7 @@ from .shared import (
     add_output_args,
     check_dependencies,
     log_error,
+    validate_parsed_args,
 )
 
 
@@ -144,6 +145,9 @@ def main() -> None:
     if not args.command:
         parser.print_help()
         return
+
+    # Validate all parsed arguments for security
+    validate_parsed_args(args)
 
     try:
         # Route to appropriate command using pattern matching (Python 3.10+)

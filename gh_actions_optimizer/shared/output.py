@@ -1,6 +1,7 @@
 """Output formatting and web browser utilities."""
 
 import json
+import os
 import sys
 import webbrowser
 from typing import Any, Optional
@@ -8,6 +9,7 @@ from typing import Any, Optional
 import yaml
 
 from .cli import log_error, log_info
+from .validation import InputValidator, validate_and_log_error
 
 
 def format_output(
@@ -22,6 +24,11 @@ def format_output(
         output = format_table(data)
 
     if output_file:
+        # Validate output file path for security
+        validate_and_log_error(InputValidator.validate_file_path, output_file, True)
+        validate_and_log_error(InputValidator.validate_filename, 
+                             os.path.basename(output_file))
+        
         try:
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(output)
@@ -93,12 +100,19 @@ def format_table(data: Any) -> str:
 
 def open_in_browser(url: str) -> None:
     """Open URL in web browser."""
+    # Validate URL for security
+    validated_url = validate_and_log_error(
+        InputValidator.validate_url, 
+        url, 
+        ["https", "http"]
+    )
+    
     try:
-        webbrowser.open(url)
-        log_info(f"Opened {url} in web browser")
+        webbrowser.open(validated_url)
+        log_info(f"Opened {validated_url} in web browser")
     except Exception as e:
         log_error(f"Failed to open browser: {e}")
-        log_info(f"Please manually visit: {url}")
+        log_info(f"Please manually visit: {validated_url}")
 
 
 def open_github_pricing() -> None:
