@@ -43,7 +43,7 @@ jobs:
         uses: actions/setup-python@3d1e2d2ca0a067f27da6fec484fce7f5256def85 # v5
         with:
           python-version: '3.13'
-          cache: 'pip'
+          # cache: 'pip' # Disabled due to SHA pinning requirements (Issue #2)
 
       - name: Install dependencies
         run: |
