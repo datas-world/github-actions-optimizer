@@ -49,7 +49,7 @@ def test_new_extension_version(new_extension_path: Path) -> None:
 
     assert result.returncode == 0
     assert "actions-optimizer" in result.stdout
-    assert "v0.1.0-dev" in result.stdout
+    assert "v0.1.0.dev0" in result.stdout
 
 
 def test_new_cost_command(new_extension_path: Path) -> None:
@@ -94,7 +94,7 @@ def test_package_imports() -> None:
 
         assert hasattr(gh_actions_optimizer, "main")
         assert hasattr(gh_actions_optimizer, "__version__")
-        assert gh_actions_optimizer.__version__ == "v0.1.0-dev"
+        assert gh_actions_optimizer.__version__ == "v0.1.0.dev0"
     except ImportError as e:
         pytest.fail(f"Failed to import package: {e}")
 

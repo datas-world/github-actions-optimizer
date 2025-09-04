@@ -41,7 +41,10 @@ def cmd_generate_runner_setup(args: argparse.Namespace) -> None:
                 "uses": "actions/cache@v4",
                 "with": {
                     "path": "~/.cache/pip",
-                    "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}",
+                    "key": (
+                        "${{ runner.os }}-pip-"
+                        "${{ hashFiles('**/requirements.txt') }}"
+                    ),
                 },
             },
         ],

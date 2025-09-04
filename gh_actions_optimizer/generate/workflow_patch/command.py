@@ -35,7 +35,10 @@ def cmd_generate_workflow_patch(args: argparse.Namespace) -> None:
                         "uses": "actions/cache@v4",
                         "with": {
                             "path": "~/.cache/pip",
-                            "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}",
+                            "key": (
+                                "${{ runner.os }}-pip-"
+                                "${{ hashFiles('**/requirements.txt') }}"
+                            ),
                         },
                     }
                 ]

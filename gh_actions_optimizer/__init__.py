@@ -11,36 +11,68 @@ Features:
 - Integration with GitHub API via gh CLI
 """
 
-# Extension metadata - read version from pyproject.toml
-import sys
-from pathlib import Path
-from typing import Any, Dict
+# Extension metadata - use importlib.metadata for proper version handling
+import functools
+import importlib.metadata
+from typing import Optional
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
+import semver
 
 
+@functools.lru_cache(maxsize=1)
 def _get_version() -> str:
-    """Get version from pyproject.toml."""
-    pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+    """Get and validate version from package metadata.
+
+    Returns:
+        Validated semantic version string with 'v' prefix.
+
+    Raises:
+        RuntimeError: If version cannot be determined or is invalid.
+    """
     try:
-        with open(pyproject_path, "rb") as f:
-            pyproject_data: Dict[str, Any] = tomllib.load(f)
-        return f"v{pyproject_data['project']['version']}"
-    except (FileNotFoundError, KeyError, Exception):
-        # Fallback version if pyproject.toml is not found or malformed
-        return "v0.1.0-dev"
+        # Try to get version from installed package metadata
+        version = importlib.metadata.version("github-actions-optimizer")
+
+        # Normalize version format (remove .dev0 suffix for semver validation)
+        normalized_version = version.replace(".dev0", "-dev")
+
+        # Validate that it's a proper semantic version
+        try:
+            semver.VersionInfo.parse(normalized_version)
+        except ValueError as e:
+            raise RuntimeError(f"Invalid semantic version '{version}': {e}") from e
+
+        return f"v{version}"
+
+    except importlib.metadata.PackageNotFoundError as e:
+        raise RuntimeError(
+            "Package 'github-actions-optimizer' not found. "
+            "This indicates an installation issue."
+        ) from e
+    except Exception as e:
+        raise RuntimeError(f"Failed to determine package version: {e}") from e
 
 
-__version__ = _get_version()
+# Cached version property
+__version__: Optional[str] = None
+
+
+def get_version() -> str:
+    """Get the cached version or compute it if not cached."""
+    global __version__
+    if __version__ is None:
+        __version__ = _get_version()
+    return __version__
+
+
+# Package metadata
+__version__ = get_version()
 __name__ = "gh-actions-optimizer"
 __description__ = (
     "Optimize GitHub Actions workflows for cost, performance, and security"
 )
 
 # Package exports
-from .main import main
+from .main import main  # noqa: E402
 
-__all__ = ["main", "__version__", "__name__", "__description__"]
+__all__ = ["main", "__version__", "__name__", "__description__", "get_version"]

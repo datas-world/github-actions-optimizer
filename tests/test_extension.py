@@ -41,7 +41,7 @@ def test_extension_version(extension_path: Path) -> None:
 
     assert result.returncode == 0
     assert "actions-optimizer" in result.stdout
-    assert "v0.1.0-dev" in result.stdout
+    assert "v0.1.0.dev0" in result.stdout
 
 
 def test_cost_command(extension_path: Path) -> None:
