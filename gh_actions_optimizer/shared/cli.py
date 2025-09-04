@@ -3,7 +3,7 @@
 import argparse
 import os
 import sys
-from typing import Any, TextIO
+from typing import TextIO
 
 from rich.console import Console
 
