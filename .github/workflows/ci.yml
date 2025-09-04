@@ -60,12 +60,8 @@ jobs:
           pip install pre-commit
           # Install additional dependencies for pre-commit hooks
           pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest
-
-      - name: Install system dependencies
-        uses: awalsh128/cache-apt-pkgs-action@2c09a5e66da6c8016428a2172bd76e5e4f14bb17 # v1.5.3
-        with:
-          packages: act
-          version: 1.0
+          # Install act system dependency directly (Issue #2: cache action removed)
+          sudo apt-get update && sudo apt-get install -y act
 
       - name: Run pre-commit hooks
         run: |
