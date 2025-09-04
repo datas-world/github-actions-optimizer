@@ -8,6 +8,10 @@ on:
     # Self-monitoring: check for our own failures every hour
     - cron: '0 * * * *'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   issues: write
