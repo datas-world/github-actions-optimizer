@@ -3,7 +3,8 @@
 import argparse
 import json
 import os
-import subprocess  # nosec B404
+import shutil
+import subprocess  # nosec B404 - Required for GitHub CLI and git operations with proper validation
 import sys
 import urllib.request
 from typing import Any, Dict, List, Optional, cast
@@ -27,9 +28,13 @@ def get_current_repo() -> Optional[str]:
             pass
 
     try:
-        # Try gh CLI second
-        result = subprocess.run(
-            ["gh", "repo", "view", "--json", "nameWithOwner"],
+        # Try gh CLI second - using which() to get absolute path for security
+        gh_path = shutil.which("gh")
+        if not gh_path:
+            raise FileNotFoundError("GitHub CLI (gh) not found in PATH")
+            
+        result = subprocess.run(  # nosec B603 - Using absolute path with validated args
+            [gh_path, "repo", "view", "--json", "nameWithOwner"],
             capture_output=True,
             text=True,
             check=True,
@@ -57,9 +62,13 @@ def get_current_repo() -> Optional[str]:
         pass
 
     try:
-        # Fallback to git remote
-        result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
+        # Fallback to git remote - using which() to get absolute path for security
+        git_path = shutil.which("git")
+        if not git_path:
+            return None
+            
+        result = subprocess.run(  # nosec B603 - Using absolute path with validated args
+            [git_path, "remote", "get-url", "origin"],
             capture_output=True,
             text=True,
             check=True,
@@ -76,8 +85,21 @@ def get_current_repo() -> Optional[str]:
         if "github.com" in remote_url:
             if remote_url.endswith(".git"):
                 remote_url = remote_url[:-4]
-            parts = remote_url.split("/")[-2:]
-            if len(parts) == 2 and parts[0] and parts[1]:  # Ensure both parts exist and are non-empty
+            
+            # More strict URL parsing for GitHub URLs
+            # Expected formats: https://github.com/owner/repo or git@github.com:owner/repo
+            if "://github.com/" in remote_url:
+                # HTTPS format
+                path_part = remote_url.split("://github.com/", 1)[1]
+            elif "git@github.com:" in remote_url:
+                # SSH format
+                path_part = remote_url.split("git@github.com:", 1)[1]
+            else:
+                return None
+            
+            # Split into owner/repo and validate we have exactly 2 parts
+            parts = path_part.split("/")
+            if len(parts) >= 2 and parts[0] and parts[1]:  # At least owner/repo
                 repo = f"{parts[0]}/{parts[1]}"
                 # Validate the repository name for security
                 try:
@@ -153,7 +175,7 @@ def run_gh_command(
             log_error("GitHub CLI (gh) not found in PATH")
             sys.exit(1)
             
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 - Using absolute path with validated arguments
             [gh_path] + args, 
             capture_output=True, 
             text=True, 

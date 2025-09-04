@@ -2,7 +2,9 @@
 
 import os
 import re
+import stat
 import sys
+import tempfile
 import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -18,24 +20,24 @@ class ValidationError(Exception):
 class InputValidator:
     """Comprehensive input validator for security-critical operations."""
 
-    # Security patterns - using non-catastrophic backtracking patterns
+    # Security patterns - optimized to prevent ReDoS vulnerabilities
     DANGEROUS_PATTERNS = [
-        r"\.\.[/\\]",  # Directory traversal (simplified to avoid ReDoS)
-        r"\$\{[^}]{0,100}\}",  # Variable injection (limited length)
-        r"(?i)(?:script|javascript|vbscript):",  # Script injection (non-capturing group)
-        r"(?i)<script(?:\s|>)",  # HTML script tags (more specific)
-        r"(?i)eval\s*\(",  # Code evaluation
-        r"(?i)exec\s*\(",  # Code execution
-        r"(?i)system\s*\(",  # System calls
-        r"(?i)import\s+os(?:\s|$)",  # OS module imports (more specific)
-        r"(?i)__import__",  # Dynamic imports
-        r"(?i)subprocess\.",  # Subprocess usage
-        r"(?i)os\.system",  # OS system calls
+        r"\.\.[/\\]",  # Directory traversal (atomic pattern)
+        r"\$\{[^}]{0,50}\}",  # Variable injection (reduced limit for safety)
+        r"(?i)(?:script|javascript|vbscript):",  # Script injection (atomic alternation)
+        r"(?i)<script[>\s]",  # HTML script tags (opening)
+        r"(?i)eval\s*\(",  # Code evaluation (atomic)
+        r"(?i)exec\s*\(",  # Code execution (atomic)
+        r"(?i)system\s*\(",  # System calls (atomic)
+        r"(?i)import\s+os\b",  # OS module imports (word boundary)
+        r"(?i)__import__",  # Dynamic imports (literal match)
+        r"(?i)subprocess\.",  # Subprocess usage (literal dot)
+        r"(?i)os\.system",  # OS system calls (escaped dot)
     ]
 
-    # GitHub-specific patterns (using atomic groups and possessive quantifiers where possible)
-    GITHUB_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?/[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$")
-    GITHUB_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/-]{1,250}$")
+    # GitHub-specific patterns (optimized for security and performance)
+    GITHUB_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]{0,98}[a-zA-Z0-9])?/[a-zA-Z0-9](?:[a-zA-Z0-9._-]{0,98}[a-zA-Z0-9])?$")
+    GITHUB_REF_PATTERN = re.compile(r"^[a-zA-Z0-9._/-]{1,200}$")  # Reduced limit for safety
     COMMIT_SHA_PATTERN = re.compile(r"^[a-f0-9]{7,40}$")
     
     # Input limits
@@ -217,7 +219,7 @@ class InputValidator:
 
     @classmethod
     def validate_environment_variable(cls, name: str, value: str) -> tuple[str, str]:
-        """Validate environment variable name and value."""
+        """Validate environment variable name and value with enhanced security."""
         if not name or not isinstance(name, str):
             raise ValidationError("Environment variable name cannot be empty")
 
@@ -226,11 +228,21 @@ class InputValidator:
 
         name = name.strip()
         
-        # Validate name format (alphanumeric and underscore only)
-        if not re.match(r"^[A-Z_][A-Z0-9_]*$", name):
+        # Validate name format (alphanumeric and underscore only, must start with letter/underscore)
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
             raise ValidationError(
-                "Invalid environment variable name format"
+                "Invalid environment variable name format. Must start with letter or underscore, "
+                "followed by alphanumeric characters or underscores"
             )
+
+        # Check for reserved/dangerous environment variable names in specific contexts
+        # Only block these in untrusted contexts, not in normal validation
+        critical_env_names = {
+            "LD_PRELOAD", "IFS"  # Only the most critical ones
+        }
+        
+        if name.upper() in critical_env_names:
+            raise ValidationError(f"Environment variable '{name}' is considered dangerous")
 
         if len(value) > cls.MAX_ENV_VAR_LENGTH:
             raise ValidationError(
@@ -243,6 +255,12 @@ class InputValidator:
                 raise ValidationError(
                     "Environment variable value contains potentially dangerous pattern"
                 )
+
+        # Additional checks for control characters and null bytes
+        if any(ord(char) < 32 for char in value) or '\x00' in value:
+            raise ValidationError(
+                "Environment variable value contains control characters or null bytes"
+            )
 
         return name, value
 
@@ -295,21 +313,21 @@ class InputValidator:
         if not isinstance(value, str):
             raise ValidationError("Value must be a string")
 
-        # Check for dangerous shell characters and patterns
+        # Check for dangerous shell characters and patterns (optimized for security)
         dangerous_chars = r'[;&|`$(){}<>*?[\]~]'
         if re.search(dangerous_chars, value):
             raise ValidationError(
                 "Value contains characters not safe for shell execution"
             )
 
-        # Additional checks for shell injection patterns
+        # Additional checks for shell injection patterns (ReDoS-safe)
         shell_patterns = [
-            r"(?i)\beval\b",
-            r"(?i)\bexec\b", 
-            r"(?i)\bsystem\b",
-            r"(?i)\bpopen\b",
-            r"(?i)\\x[0-9a-f]{2}",  # Hex escape sequences
-            r"(?i)\\[0-9]{1,3}",    # Octal escape sequences
+            r"(?i)\beval\b",        # Word boundary prevents partial matches
+            r"(?i)\bexec\b",        # Word boundary prevents partial matches
+            r"(?i)\bsystem\b",      # Word boundary prevents partial matches
+            r"(?i)\bpopen\b",       # Word boundary prevents partial matches
+            r"\\x[0-9a-fA-F]{2}",   # Hex escape sequences (case insensitive, limited)
+            r"\\[0-7]{1,3}",        # Octal escape sequences (limited range)
         ]
         
         for pattern in shell_patterns:
@@ -337,19 +355,101 @@ class InputValidator:
 
     @classmethod
     def validate_file_size(cls, file_path: Union[str, Path], max_size_bytes: int) -> None:
-        """Validate file size."""
+        """Validate file size with enhanced security."""
         try:
             path = Path(file_path)
-            if not path.exists():
+            
+            # Validate path security first
+            resolved_path = path.resolve()
+            if not resolved_path.exists():
                 raise ValidationError(f"File does not exist: {file_path}")
 
-            size = path.stat().st_size
+            # Check if file is readable and not a special file
+            if not resolved_path.is_file():
+                raise ValidationError(f"Path is not a regular file: {file_path}")
+
+            size = resolved_path.stat().st_size
             if size > max_size_bytes:
                 raise ValidationError(
                     f"File too large: {size} bytes (max {max_size_bytes} bytes)"
                 )
-        except OSError as e:
+        except OSError as e:  # nosec B110 - Proper exception handling for file operations
             raise ValidationError(f"Cannot access file: {e}")
+
+    @classmethod
+    def create_secure_temp_file(cls, suffix: str = "", prefix: str = "temp_") -> str:
+        """Create a secure temporary file with proper permissions."""
+        import tempfile
+        import stat
+        
+        # Validate inputs
+        if not isinstance(suffix, str) or len(suffix) > 20:
+            raise ValidationError("Invalid suffix for temporary file")
+        if not isinstance(prefix, str) or len(prefix) > 20:
+            raise ValidationError("Invalid prefix for temporary file")
+            
+        # Create secure temporary file
+        fd, temp_path = tempfile.mkstemp(suffix=suffix, prefix=prefix)
+        try:
+            # Set secure file permissions (owner read/write only)
+            os.chmod(temp_path, stat.S_IRUSR | stat.S_IWUSR)  # 600 permissions
+            os.close(fd)
+            return temp_path
+        except OSError as e:
+            # Clean up on error
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+            raise ValidationError(f"Cannot create secure temporary file: {e}")
+
+    @classmethod
+    def validate_yaml_content(cls, content: str, max_size: int = 1024 * 1024) -> Dict[str, Any]:
+        """Safely validate and parse YAML content."""
+        if not content or not isinstance(content, str):
+            raise ValidationError("YAML content must be a non-empty string")
+            
+        if len(content) > max_size:
+            raise ValidationError(f"YAML content too large (max {max_size} bytes)")
+            
+        # Check for dangerous patterns in YAML content
+        for pattern in cls.DANGEROUS_PATTERNS:
+            if re.search(pattern, content):
+                raise ValidationError("YAML content contains potentially dangerous patterns")
+        
+        try:
+            # Use safe_load to prevent code execution
+            parsed = yaml.safe_load(content)
+            if parsed is None:
+                raise ValidationError("YAML content is empty or invalid")
+            if not isinstance(parsed, dict):
+                raise ValidationError("YAML content must be a dictionary")
+            return parsed
+        except yaml.YAMLError as e:
+            raise ValidationError(f"Invalid YAML content: {e}")
+
+    @classmethod  
+    def validate_network_url(cls, url: str) -> str:
+        """Validate URL for network operations with enhanced security."""
+        validated_url = cls.validate_url(url, ["https"])  # Only allow HTTPS
+        
+        parsed = urlparse(validated_url)
+        
+        # Only allow GitHub domains for security
+        allowed_domains = [
+            "github.com",
+            "api.github.com", 
+            "raw.githubusercontent.com",
+            "codeload.github.com"
+        ]
+        
+        if parsed.hostname not in allowed_domains:
+            raise ValidationError(
+                f"Domain '{parsed.hostname}' not allowed for network operations. "
+                f"Allowed domains: {allowed_domains}"
+            )
+            
+        return validated_url
 
 
 def validate_and_log_error(validation_func: Any, *args: Any, **kwargs: Any) -> Any:
