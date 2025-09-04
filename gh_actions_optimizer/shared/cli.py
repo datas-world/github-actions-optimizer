@@ -188,15 +188,13 @@ def add_output_args(parser_obj: argparse.ArgumentParser) -> None:
 
 def check_dependencies() -> None:
     """Check if required dependencies are available."""
-    import subprocess  # nosec B404
+    from .subprocess import check_command_availability
 
     deps = ["gh", "jq"]
     missing = []
 
     for dep in deps:
-        try:
-            subprocess.run([dep, "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
+        if not check_command_availability(dep):
             missing.append(dep)
 
     if missing:
