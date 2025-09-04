@@ -13,10 +13,14 @@ from .cli import log_error, log_info
 
 def get_current_repo() -> Optional[str]:
     """Get current repository from gh CLI, GitHub Actions env vars, or git remote."""
+    from .security import mask_repository_url
+    
     # First try GitHub Actions environment variables
     github_repository = os.environ.get("GITHUB_REPOSITORY")
     if github_repository:
-        log_info(f"Using GitHub Actions repository: {github_repository}")
+        # Only log the repo name, not any embedded credentials
+        safe_repo = mask_repository_url(github_repository)
+        log_info(f"Using GitHub Actions repository: {safe_repo}")
         return github_repository
 
     try:
@@ -30,7 +34,8 @@ def get_current_repo() -> Optional[str]:
         repo_info = json.loads(result.stdout)
         repo_raw = repo_info.get("nameWithOwner")
         if repo_raw and isinstance(repo_raw, str):
-            log_info(f"Using gh CLI detected repository: {repo_raw}")
+            safe_repo = mask_repository_url(repo_raw)
+            log_info(f"Using gh CLI detected repository: {safe_repo}")
             return cast(str, repo_raw)
     except (
         subprocess.CalledProcessError,
@@ -55,7 +60,9 @@ def get_current_repo() -> Optional[str]:
             parts = remote_url.split("/")[-2:]
             if len(parts) == 2:
                 repo = f"{parts[0]}/{parts[1]}"
-                log_info(f"Using git remote detected repository: {repo}")
+                # Mask any credentials in the URL before logging
+                safe_repo = mask_repository_url(repo)
+                log_info(f"Using git remote detected repository: {safe_repo}")
                 return repo
     except subprocess.CalledProcessError:
         pass
@@ -113,7 +120,9 @@ def get_repo_for_command(args: argparse.Namespace) -> str:
 def run_gh_command(
     args: List[str], check: bool = True
 ) -> subprocess.CompletedProcess[str]:
-    """Run a gh CLI command."""
+    """Run a gh CLI command with secure error handling."""
+    from .security import sanitize_subprocess_output
+    
     try:
         result = subprocess.run(
             ["gh"] + args, capture_output=True, text=True, check=check
@@ -122,13 +131,18 @@ def run_gh_command(
     except subprocess.CalledProcessError as e:
         log_error(f"GitHub CLI command failed: {e}")
         if e.stderr:
-            log_error(f"Error output: {e.stderr}")
+            # Sanitize error output to prevent token/credential exposure
+            safe_stderr = sanitize_subprocess_output(e.stderr, ["gh"] + args)
+            log_error(f"Error output: {safe_stderr}")
         sys.exit(1)
 
 
 def get_workflows(repo: str) -> List[Dict[str, Any]]:
     """Get workflow files from repository."""
-    log_info(f"Fetching workflows from {repo}...")
+    from .security import mask_repository_url
+    
+    safe_repo = mask_repository_url(repo)
+    log_info(f"Fetching workflows from {safe_repo}...")
 
     result = run_gh_command(
         [
@@ -160,12 +174,86 @@ def get_workflows(repo: str) -> List[Dict[str, Any]]:
 
 
 def download_workflow_content(download_url: str) -> str:
-    """Download workflow content from URL."""
+    """Download workflow content from URL with secure error handling."""
+    from .security import mask_repository_url, sanitize_error_message
+    
     try:
         with urllib.request.urlopen(download_url) as response:  # nosec B310
             content_bytes = cast(bytes, response.read())
             content = content_bytes.decode("utf-8")
             return content
     except (urllib.error.URLError, UnicodeDecodeError) as e:
-        log_error(f"Failed to download workflow content: {e}")
+        # Sanitize URL and error message before logging
+        safe_url = mask_repository_url(download_url)
+        safe_error = sanitize_error_message(str(e))
+        log_error(f"Failed to download workflow content from {safe_url}: {safe_error}")
         return ""
+
+
+def validate_github_auth() -> bool:
+    """Validate GitHub authentication without exposing tokens."""
+    from .security import validate_github_token_format
+    
+    try:
+        # Check if gh CLI is authenticated
+        result = subprocess.run(
+            ["gh", "auth", "status"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        
+        if result.returncode == 0:
+            log_info("GitHub authentication validated successfully")
+            return True
+        else:
+            log_error("GitHub authentication failed. Run 'gh auth login' to authenticate.")
+            return False
+            
+    except subprocess.CalledProcessError:
+        log_error("Failed to check GitHub authentication status")
+        return False
+    except FileNotFoundError:
+        log_error("GitHub CLI (gh) not found. Please install it first.")
+        return False
+
+
+def get_github_token_scopes() -> List[str]:
+    """Get GitHub token scopes without exposing the token."""
+    try:
+        result = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        if result.stdout.strip():
+            # Don't log the actual token, just verify we have one
+            log_info("GitHub token retrieved successfully")
+            
+            # Get token scopes using a separate API call
+            scope_result = subprocess.run(
+                ["gh", "api", "/user", "--include", "x-oauth-scopes"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            
+            if scope_result.returncode == 0:
+                # Extract scopes from headers (this is safe to log)
+                headers = scope_result.stderr
+                if "x-oauth-scopes:" in headers:
+                    scopes_line = [line for line in headers.split("\n") if "x-oauth-scopes:" in line][0]
+                    scopes = scopes_line.split(":")[1].strip().split(", ") if scopes_line.split(":")[1].strip() else []
+                    log_info(f"GitHub token scopes: {', '.join(scopes) if scopes else 'none'}")
+                    return scopes
+            
+            return []
+            
+    except subprocess.CalledProcessError:
+        log_error("Failed to retrieve GitHub token information")
+        return []
+    except FileNotFoundError:
+        log_error("GitHub CLI (gh) not found")
+        return []

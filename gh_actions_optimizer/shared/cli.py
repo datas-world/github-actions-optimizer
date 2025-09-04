@@ -124,26 +124,38 @@ colors = Colors()
 
 def log_info(message: str) -> None:
     """Log info message to stderr using Rich console."""
+    from .security import sanitize_for_logging
+    
+    safe_message = sanitize_for_logging(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[blue][INFO][/blue] {message}", highlight=False)
+    console.print(f"[blue][INFO][/blue] {safe_message}", highlight=False)
 
 
 def log_warn(message: str) -> None:
     """Log warning message to stderr using Rich console."""
+    from .security import sanitize_for_logging
+    
+    safe_message = sanitize_for_logging(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[yellow][WARN][/yellow] {message}", highlight=False)
+    console.print(f"[yellow][WARN][/yellow] {safe_message}", highlight=False)
 
 
 def log_error(message: str) -> None:
     """Log error message to stderr using Rich console."""
+    from .security import sanitize_error_message
+    
+    safe_message = sanitize_error_message(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[red][ERROR][/red] {message}", highlight=False)
+    console.print(f"[red][ERROR][/red] {safe_message}", highlight=False)
 
 
 def log_success(message: str) -> None:
     """Log success message to stderr using Rich console."""
+    from .security import sanitize_for_logging
+    
+    safe_message = sanitize_for_logging(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[green][SUCCESS][/green] {message}", highlight=False)
+    console.print(f"[green][SUCCESS][/green] {safe_message}", highlight=False)
 
 
 def add_common_args(
