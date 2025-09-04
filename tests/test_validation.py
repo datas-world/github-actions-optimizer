@@ -4,6 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -50,6 +51,20 @@ class TestInputValidator:
         
         for repo in invalid_repos:
             with pytest.raises(ValidationError):
+                InputValidator.validate_repository_name(repo)
+
+    def test_validate_repository_name_dangerous_patterns(self) -> None:
+        """Test repository names containing dangerous patterns for failure injection."""
+        # Repository names that pass format validation but contain dangerous patterns
+        dangerous_repos = [
+            "owner/subprocess.call",  # Contains "subprocess."
+            "owner/os.system",  # Contains "os.system"
+            "owner/test.subprocess.popen",  # Contains "subprocess."
+            "owner/util.os.system",  # Contains "os.system"
+        ]
+        
+        for repo in dangerous_repos:
+            with pytest.raises(ValidationError, match="potentially dangerous pattern"):
                 InputValidator.validate_repository_name(repo)
 
     def test_validate_repository_name_none(self) -> None:
@@ -261,6 +276,35 @@ jobs:
         with pytest.raises(ValidationError, match="Environment variable value must be a string"):
             InputValidator.validate_environment_variable("VALID_NAME", 123)  # type: ignore
 
+    def test_validate_environment_variable_shell_injection_patterns(self) -> None:
+        """Test shell sanitization with injection patterns for failure injection."""
+        # Values that trigger shell injection patterns (word boundaries matter for \b patterns)
+        shell_injection_values = [
+            "eval",  # Simple eval command
+            "exec",  # Simple exec command
+            "system",  # Simple system command
+            "popen",  # Simple popen command
+        ]
+        
+        for value in shell_injection_values:
+            with pytest.raises(ValidationError, match="shell injection patterns"):
+                InputValidator.sanitize_for_shell(value)
+
+    def test_sanitize_for_shell_escape_sequences(self) -> None:
+        """Test shell sanitization with escape sequence injection patterns."""
+        escape_sequence_values = [
+            "data\\x41end",  # hex escape sequence
+            "\\x42\\x43",  # multiple hex escapes
+            "value\\123end",  # octal escape sequence
+            "\\777\\123",  # multiple octal escapes
+            "normal\\x0avalue",  # hex newline injection
+            "test\\077data",  # octal escape
+        ]
+        
+        for value in escape_sequence_values:
+            with pytest.raises(ValidationError, match="shell injection patterns"):
+                InputValidator.sanitize_for_shell(value)
+
     def test_validate_url_valid(self) -> None:
         """Test valid URLs."""
         valid_urls = [
@@ -429,6 +473,25 @@ jobs:
                         os.unlink(tmp.name)
                     except OSError:
                         pass  # Best effort cleanup
+
+    def test_validate_file_size_os_error_injection(self) -> None:
+        """Test file size validation with injected OS errors for failure injection."""
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(b"test content")
+            tmp.flush()
+            
+            # Mock Path.stat to raise OSError for failure injection
+            with patch('pathlib.Path.stat') as mock_stat:
+                mock_stat.side_effect = OSError("Simulated file access error")
+                
+                with pytest.raises(ValidationError, match="Cannot access file"):
+                    InputValidator.validate_file_size(tmp.name, 1000)
+            
+            # Clean up
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass
 
 
 class TestValidateAndLogError:
