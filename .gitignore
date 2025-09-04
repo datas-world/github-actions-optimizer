@@ -73,6 +73,15 @@ data/*.csv
 !.pre-commit-config.yaml
 !.github/**/*.yml
 !.github/**/*.yaml
+!.secrets.baseline
+
+# Security scan reports (generated during CI/CD)
+bandit-report.json
+pip-audit-report.json
+safety-report.json
+current-secrets.json
+.pip-audit-report.json
+.safety-report.json
 
 # Cache directories
 .cache/
