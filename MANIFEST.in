@@ -1,13 +1,11 @@
-include README.md
-include LICENSE
-include LICENSE_COMPATIBILITY.md
-include GITHUB_CLI_BEST_PRACTICES.md
+include *.md
 include requirements.txt
 include extension.yml
 include gh-actions-optimizer
 
 recursive-include gh_actions_optimizer *.py
 recursive-include docs *.md
+recursive-incude tests *.py
 
 global-exclude *.pyc
 global-exclude __pycache__
