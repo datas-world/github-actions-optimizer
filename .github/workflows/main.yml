@@ -45,6 +45,31 @@ jobs:
         with:
           python-version: '3.13'
 
+      # Cache Python dependencies for faster builds
+      # Cache für Python-Abhängigkeiten für schnellere Builds
+      - name: Cache Python dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809  # v4.2.4
+        with:
+          path: ~/.cache/pip
+          key: >-
+            ${{ runner.os }}-pip-pre-commit-${{
+            hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-pre-commit-
+            ${{ runner.os }}-pip-
+
+      # Cache pre-commit environments for faster hook execution
+      # Cache für Pre-commit-Umgebungen für schnellere Hook-Ausführung
+      - name: Cache pre-commit environments
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809  # v4.2.4
+        with:
+          path: ~/.cache/pre-commit
+          key: >-
+            ${{ runner.os }}-pre-commit-${{
+            hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pre-commit-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -144,6 +169,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # Cache Python dependencies for faster builds
+      # Cache für Python-Abhängigkeiten für schnellere Builds
+      - name: Cache Python dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809  # v4.2.4
+        with:
+          path: ~/.cache/pip
+          key: >-
+            ${{ runner.os }}-pip-test-py${{ matrix.python-version }}-${{
+            hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-test-py${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-test-
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -221,6 +260,19 @@ jobs:
         with:
           python-version: '3.13'
 
+      # Cache Python dependencies for faster builds
+      # Cache für Python-Abhängigkeiten für schnellere Builds
+      - name: Cache Python dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809  # v4.2.4
+        with:
+          path: ~/.cache/pip
+          key: >-
+            ${{ runner.os }}-pip-build-${{
+            hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-build-
+            ${{ runner.os }}-pip-
+
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
@@ -283,6 +335,19 @@ jobs:
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.13'
+
+      # Cache Python dependencies for faster builds
+      # Cache für Python-Abhängigkeiten für schnellere Builds
+      - name: Cache Python dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809  # v4.2.4
+        with:
+          path: ~/.cache/pip
+          key: >-
+            ${{ runner.os }}-pip-security-${{
+            hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-security-
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
