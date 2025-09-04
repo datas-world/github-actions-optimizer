@@ -94,6 +94,12 @@ class TestInputValidator:
         with pytest.raises(ValidationError, match="Absolute paths not allowed"):
             InputValidator.validate_file_path(invalid_paths[-1], allow_absolute=False)
 
+    def test_validate_file_path_too_long(self) -> None:
+        """Test file path that exceeds maximum length."""
+        long_path = "a" * (InputValidator.MAX_PATH_LENGTH + 1)
+        with pytest.raises(ValidationError, match="File path too long"):
+            InputValidator.validate_file_path(long_path)
+
     def test_validate_filename_valid(self) -> None:
         """Test valid filenames."""
         valid_filenames = [
@@ -152,6 +158,20 @@ jobs:
         for yaml_content in invalid_yamls:
             with pytest.raises(ValidationError):
                 InputValidator.validate_yaml_content(yaml_content)
+
+    def test_validate_yaml_content_none_result(self) -> None:
+        """Test YAML content that parses to None."""
+        # YAML that parses to None
+        none_yaml = "---\n"
+        with pytest.raises(ValidationError, match="YAML content is empty or invalid"):
+            InputValidator.validate_yaml_content(none_yaml)
+
+    def test_validate_yaml_content_non_dict(self) -> None:
+        """Test YAML content that parses to non-dict."""
+        # YAML that parses to a list instead of dict
+        list_yaml = "- item1\n- item2\n"
+        with pytest.raises(ValidationError, match="YAML content must be a dictionary"):
+            InputValidator.validate_yaml_content(list_yaml)
 
     def test_validate_github_ref_valid(self) -> None:
         """Test valid GitHub references."""
@@ -236,6 +256,11 @@ jobs:
             with pytest.raises(ValidationError):
                 InputValidator.validate_environment_variable(name, value)
 
+    def test_validate_environment_variable_non_string_value(self) -> None:
+        """Test environment variable with non-string value."""
+        with pytest.raises(ValidationError, match="Environment variable value must be a string"):
+            InputValidator.validate_environment_variable("VALID_NAME", 123)  # type: ignore
+
     def test_validate_url_valid(self) -> None:
         """Test valid URLs."""
         valid_urls = [
@@ -262,6 +287,13 @@ jobs:
             with pytest.raises(ValidationError):
                 InputValidator.validate_url(url)
 
+    def test_validate_url_malformed(self) -> None:
+        """Test malformed URL that causes parsing exception."""
+        # This should trigger the exception handling in validate_url
+        malformed_url = "http://[invalid"
+        with pytest.raises(ValidationError, match="Invalid URL format"):
+            InputValidator.validate_url(malformed_url)
+
     def test_validate_url_custom_schemes(self) -> None:
         """Test URL validation with custom allowed schemes."""
         result = InputValidator.validate_url("ftp://ftp.example.com", ["ftp"])
@@ -279,6 +311,11 @@ jobs:
         """Test invalid input length."""
         with pytest.raises(ValidationError, match="Test input too long"):
             InputValidator.validate_input_length("too long", 5, "Test input")
+
+    def test_validate_input_length_non_string(self) -> None:
+        """Test input length validation with non-string input."""
+        with pytest.raises(ValidationError, match="Test input must be a string"):
+            InputValidator.validate_input_length(123, 10, "Test input")  # type: ignore
 
     def test_sanitize_for_shell_valid(self) -> None:
         """Test safe shell values."""
@@ -307,6 +344,11 @@ jobs:
             with pytest.raises(ValidationError):
                 InputValidator.sanitize_for_shell(value)
 
+    def test_sanitize_for_shell_non_string(self) -> None:
+        """Test shell sanitization with non-string input."""
+        with pytest.raises(ValidationError, match="Value must be a string"):
+            InputValidator.sanitize_for_shell(123)  # type: ignore
+
     def test_validate_file_extension_valid(self) -> None:
         """Test valid file extensions."""
         result = InputValidator.validate_file_extension("file.yml", [".yml", ".yaml"])
@@ -319,6 +361,11 @@ jobs:
         """Test invalid file extensions."""
         with pytest.raises(ValidationError, match="File extension not allowed"):
             InputValidator.validate_file_extension("file.txt", [".yml", ".yaml"])
+
+    def test_validate_file_extension_empty_filename(self) -> None:
+        """Test file extension validation with empty filename."""
+        with pytest.raises(ValidationError, match="Filename cannot be empty"):
+            InputValidator.validate_file_extension("", [".yml", ".yaml"])
 
     def test_validate_file_size_valid(self) -> None:
         """Test valid file size."""
@@ -348,6 +395,41 @@ jobs:
         with pytest.raises(ValidationError, match="File does not exist"):
             InputValidator.validate_file_size("/nonexistent/file", 1000)
 
+    def test_validate_file_size_permission_error(self) -> None:
+        """Test file size validation with permission error."""
+        # Skip this test on systems where permission changes don't work as expected
+        if os.name == 'nt':  # Windows
+            pytest.skip("Permission testing not reliable on Windows")
+        
+        # Create a temporary file and then make it inaccessible
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
+            tmp.write("test content")
+            tmp.flush()
+            
+            try:
+                # Change permissions to make it inaccessible (remove all permissions)
+                os.chmod(tmp.name, 0o000)
+                
+                # Try to trigger the permission error
+                try:
+                    InputValidator.validate_file_size(tmp.name, 1000)
+                    # If no exception is raised, it means the OS allows access despite permissions
+                    # This can happen in some containerized environments
+                    pytest.skip("Permission restrictions not enforced in this environment")
+                except ValidationError as e:
+                    assert "Cannot access file" in str(e)
+            finally:
+                # Restore permissions so we can delete the file
+                try:
+                    os.chmod(tmp.name, 0o644)
+                    os.unlink(tmp.name)
+                except OSError:
+                    # If we can't restore permissions, try to delete anyway
+                    try:
+                        os.unlink(tmp.name)
+                    except OSError:
+                        pass  # Best effort cleanup
+
 
 class TestValidateAndLogError:
     """Test cases for validate_and_log_error helper function."""
@@ -367,6 +449,14 @@ class TestValidateAndLogError:
                 InputValidator.validate_repository_name, 
                 "invalid"
             )
+
+    def test_unexpected_exception_exits(self) -> None:
+        """Test unexpected exception causes system exit."""
+        def failing_function(value: str) -> str:
+            raise RuntimeError("Unexpected error")
+        
+        with pytest.raises(SystemExit):
+            validate_and_log_error(failing_function, "test")
 
 
 class TestValidationIntegration:
