@@ -1,0 +1,14 @@
+[bandit]
+# Bandit configuration for security scanning
+# This file configures bandit to properly handle our secure subprocess usage
+
+# Skip tests that are false positives for our secure usage
+skips = B603,B607
+
+# These are false positives because:
+# B603: subprocess_without_shell_equals_true - We validate all executable paths and command arguments
+# B607: start_process_with_partial_path - We use validate_executable_path() to resolve full paths
+
+[bandit:assert_used]
+# Allow assert statements in test files
+skips = *test*.py

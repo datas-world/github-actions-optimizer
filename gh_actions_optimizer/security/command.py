@@ -5,7 +5,7 @@ import json
 
 import yaml
 
-from ..shared import Colors, log_info, log_success
+from ..shared import Colors, log_info, log_success, log_warn
 
 
 def cmd_security(args: argparse.Namespace) -> None:
@@ -15,15 +15,22 @@ def cmd_security(args: argparse.Namespace) -> None:
         download_workflow_content,
         get_repo_for_command,
         get_workflows,
+        validate_github_auth,
     )
+    from ..shared.security import sanitize_for_logging
 
     repo = get_repo_for_command(args)
 
     if not args.quiet:
-        log_info(f"Running security audit for {repo}...")
+        # Sanitize repository name for logging
+        safe_repo = sanitize_for_logging(repo)
+        log_info(f"Running security audit for {safe_repo}...")
 
-    # Use sample data if requested or if we can't access the repo
-    if hasattr(args, "sample_data") and args.sample_data:
+    # Validate GitHub authentication before proceeding
+    if not validate_github_auth():
+        log_warn("GitHub authentication could not be validated. Using sample data.")
+        security_issues = generate_sample_security_issues()
+    elif hasattr(args, "sample_data") and args.sample_data:
         security_issues = generate_sample_security_issues()
     else:
         try:
@@ -106,12 +113,15 @@ def cmd_security(args: argparse.Namespace) -> None:
                 "Sanitize all user inputs in scripts",
             ],
         }
+        output_content = json.dumps(output, indent=2)
         if args.output:
-            with open(args.output, "w") as f:
-                json.dump(output, f, indent=2)
-            log_success(f"Security audit results saved to {args.output}")
+            from ..shared.security import secure_file_write
+            if secure_file_write(args.output, output_content):
+                log_success(f"Security audit results saved to {args.output}")
+            else:
+                log_error(f"Failed to write to {args.output}")
         else:
-            print(json.dumps(output, indent=2))
+            print(output_content)
     elif args.format == "yaml":
         output = {
             "repository": repo,
@@ -123,32 +133,37 @@ def cmd_security(args: argparse.Namespace) -> None:
                 "Sanitize all user inputs in scripts",
             ],
         }
+        output_content = yaml.dump(output, default_flow_style=False, allow_unicode=True)
         if args.output:
-            with open(args.output, "w") as f:
-                yaml.dump(output, f, default_flow_style=False)
-            log_success(f"Security audit results saved to {args.output}")
+            from ..shared.security import secure_file_write
+            if secure_file_write(args.output, output_content):
+                log_success(f"Security audit results saved to {args.output}")
+            else:
+                log_error(f"Failed to write to {args.output}")
         else:
-            print(yaml.dump(output, default_flow_style=False, allow_unicode=True))
+            print(output_content)
     else:
-        print(f"\n{Colors.BOLD}Security Audit Results for {repo}{Colors.NC}")
-        print("=" * 60)
+        # Use Rich console for proper formatting
+        from ..shared.cli import colors
+        console = colors.get_console()
+        
+        console.print(f"\n[bold]Security Audit Results for {repo}[/bold]")
+        console.print("=" * 60)
 
         if not security_issues:
-            print(f"{Colors.GREEN}No security issues found!{Colors.NC}")
+            console.print("[green]No security issues found![/green]")
         else:
             for issue_data in security_issues:
-                severity_color = (
-                    Colors.RED if issue_data["severity"] == "HIGH" else Colors.YELLOW
-                )
-                print(
-                    f"\n{Colors.BOLD}{issue_data['workflow']}{Colors.NC} - "
-                    f"{severity_color}{issue_data['severity']}{Colors.NC}"
+                severity_color = "red" if issue_data["severity"] == "HIGH" else "yellow"
+                console.print(
+                    f"\n[bold]{issue_data['workflow']}[/bold] - "
+                    f"[{severity_color}]{issue_data['severity']}[/{severity_color}]"
                 )
                 for issue in issue_data["issues"]:
-                    print(f"  - {issue}")
+                    console.print(f"  - {issue}")
 
-        print(f"\n{Colors.BLUE}Security Recommendations:{Colors.NC}")
-        print("  - Pin all third-party actions to specific commit SHAs")
-        print("  - Use explicit permissions for all workflows")
-        print("  - Avoid pull_request_target for untrusted code")
-        print("  - Sanitize all user inputs in scripts")
+        console.print(f"\n[blue]Security Recommendations:[/blue]")
+        console.print("  - Pin all third-party actions to specific commit SHAs")
+        console.print("  - Use explicit permissions for all workflows")
+        console.print("  - Avoid pull_request_target for untrusted code")
+        console.print("  - Sanitize all user inputs in scripts")

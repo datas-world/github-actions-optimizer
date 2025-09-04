@@ -124,26 +124,38 @@ colors = Colors()
 
 def log_info(message: str) -> None:
     """Log info message to stderr using Rich console."""
+    from .security import sanitize_for_logging
+    
+    safe_message = sanitize_for_logging(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[blue][INFO][/blue] {message}", highlight=False)
+    console.print(f"[blue][INFO][/blue] {safe_message}", highlight=False)
 
 
 def log_warn(message: str) -> None:
     """Log warning message to stderr using Rich console."""
+    from .security import sanitize_for_logging
+    
+    safe_message = sanitize_for_logging(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[yellow][WARN][/yellow] {message}", highlight=False)
+    console.print(f"[yellow][WARN][/yellow] {safe_message}", highlight=False)
 
 
 def log_error(message: str) -> None:
     """Log error message to stderr using Rich console."""
+    from .security import sanitize_error_message
+    
+    safe_message = sanitize_error_message(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[red][ERROR][/red] {message}", highlight=False)
+    console.print(f"[red][ERROR][/red] {safe_message}", highlight=False)
 
 
 def log_success(message: str) -> None:
     """Log success message to stderr using Rich console."""
+    from .security import sanitize_for_logging
+    
+    safe_message = sanitize_for_logging(message)
     console = colors.get_console(sys.stderr)
-    console.print(f"[green][SUCCESS][/green] {message}", highlight=False)
+    console.print(f"[green][SUCCESS][/green] {safe_message}", highlight=False)
 
 
 def add_common_args(
@@ -189,14 +201,22 @@ def add_output_args(parser_obj: argparse.ArgumentParser) -> None:
 def check_dependencies() -> None:
     """Check if required dependencies are available."""
     import subprocess  # nosec B404
+    from .security import validate_executable_path
 
     deps = ["gh", "jq"]
     missing = []
 
     for dep in deps:
         try:
-            subprocess.run([dep, "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Use secure executable path validation
+            dep_executable = validate_executable_path(dep)
+            subprocess.run(  # nosec B603 - executable path validated above
+                [dep_executable, "--version"], 
+                capture_output=True, 
+                check=True,
+                timeout=30  # Add timeout for security
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             missing.append(dep)
 
     if missing:
