@@ -113,12 +113,15 @@ def cmd_security(args: argparse.Namespace) -> None:
                 "Sanitize all user inputs in scripts",
             ],
         }
+        output_content = json.dumps(output, indent=2)
         if args.output:
-            with open(args.output, "w") as f:
-                json.dump(output, f, indent=2)
-            log_success(f"Security audit results saved to {args.output}")
+            from ..shared.security import secure_file_write
+            if secure_file_write(args.output, output_content):
+                log_success(f"Security audit results saved to {args.output}")
+            else:
+                log_error(f"Failed to write to {args.output}")
         else:
-            print(json.dumps(output, indent=2))
+            print(output_content)
     elif args.format == "yaml":
         output = {
             "repository": repo,
@@ -130,12 +133,15 @@ def cmd_security(args: argparse.Namespace) -> None:
                 "Sanitize all user inputs in scripts",
             ],
         }
+        output_content = yaml.dump(output, default_flow_style=False, allow_unicode=True)
         if args.output:
-            with open(args.output, "w") as f:
-                yaml.dump(output, f, default_flow_style=False)
-            log_success(f"Security audit results saved to {args.output}")
+            from ..shared.security import secure_file_write
+            if secure_file_write(args.output, output_content):
+                log_success(f"Security audit results saved to {args.output}")
+            else:
+                log_error(f"Failed to write to {args.output}")
         else:
-            print(yaml.dump(output, default_flow_style=False, allow_unicode=True))
+            print(output_content)
     else:
         # Use Rich console for proper formatting
         from ..shared.cli import colors

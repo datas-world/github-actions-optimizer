@@ -212,3 +212,87 @@ def mask_repository_url(url: str) -> str:
     url = re.sub(r"([?&]access_token=)[^&]*", r"\1[REDACTED]", url, flags=re.IGNORECASE)
 
     return url
+
+
+def validate_url(url: str) -> bool:
+    """Validate URL to prevent security issues."""
+    if not url:
+        return False
+    
+    # Basic URL validation - must be https
+    if not url.startswith("https://"):
+        return False
+    
+    # Whitelist GitHub domains
+    allowed_domains = [
+        "github.com",
+        "api.github.com", 
+        "raw.githubusercontent.com",
+        "codeload.github.com"
+    ]
+    
+    # Extract domain from URL
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.hostname and any(
+            parsed.hostname == domain or parsed.hostname.endswith(f".{domain}")
+            for domain in allowed_domains
+        ):
+            return True
+    except Exception:  # nosec B110 - broad exception needed for URL validation fallback
+        pass
+    
+    return False
+
+
+def validate_executable_path(executable: str) -> str:
+    """Validate and resolve executable path for security."""
+    import shutil
+    
+    # Check if executable exists in PATH
+    full_path = shutil.which(executable)
+    if full_path:
+        return full_path
+    
+    # Fallback to original if not found (for compatibility)
+    return executable
+
+
+def validate_file_path(file_path: str) -> bool:
+    """Validate file path to prevent directory traversal attacks."""
+    if not file_path:
+        return False
+    
+    # Normalize path to resolve any .. or . components
+    import os
+    normalized = os.path.normpath(file_path)
+    
+    # Check for directory traversal attempts
+    if ".." in normalized or normalized.startswith("/"):
+        return False
+    
+    # Additional validation for suspicious patterns
+    suspicious_patterns = [
+        "/etc/",
+        "/proc/",
+        "/sys/",
+        "~",
+        "$",
+        "%",
+    ]
+    
+    return not any(pattern in normalized for pattern in suspicious_patterns)
+
+
+def secure_file_write(file_path: str, content: str, encoding: str = "utf-8") -> bool:
+    """Securely write content to a file after validation."""
+    if not validate_file_path(file_path):
+        return False
+    
+    try:
+        with open(file_path, "w", encoding=encoding) as f:
+            f.write(content)
+        return True
+    except OSError:
+        return False

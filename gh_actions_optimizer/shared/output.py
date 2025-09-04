@@ -14,6 +14,8 @@ def format_output(
     data: Any, format_type: str = "table", output_file: Optional[str] = None
 ) -> None:
     """Format and output data in the specified format."""
+    from .security import validate_file_path
+    
     if format_type == "json":
         output = json.dumps(data, indent=2)
     elif format_type == "yaml":
@@ -22,6 +24,11 @@ def format_output(
         output = format_table(data)
 
     if output_file:
+        # Validate file path for security
+        if not validate_file_path(output_file):
+            log_error(f"Invalid or unsafe file path: {output_file}")
+            sys.exit(1)
+            
         try:
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(output)
@@ -93,6 +100,13 @@ def format_table(data: Any) -> str:
 
 def open_in_browser(url: str) -> None:
     """Open URL in web browser."""
+    from .security import validate_url
+    
+    # Validate URL for security
+    if not validate_url(url):
+        log_error(f"Invalid or unsafe URL: {url}")
+        return
+    
     try:
         webbrowser.open(url)
         log_info(f"Opened {url} in web browser")

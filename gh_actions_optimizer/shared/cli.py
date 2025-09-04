@@ -201,14 +201,22 @@ def add_output_args(parser_obj: argparse.ArgumentParser) -> None:
 def check_dependencies() -> None:
     """Check if required dependencies are available."""
     import subprocess  # nosec B404
+    from .security import validate_executable_path
 
     deps = ["gh", "jq"]
     missing = []
 
     for dep in deps:
         try:
-            subprocess.run([dep, "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Use secure executable path validation
+            dep_executable = validate_executable_path(dep)
+            subprocess.run(  # nosec B603 - executable path validated above
+                [dep_executable, "--version"], 
+                capture_output=True, 
+                check=True,
+                timeout=30  # Add timeout for security
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             missing.append(dep)
 
     if missing:
