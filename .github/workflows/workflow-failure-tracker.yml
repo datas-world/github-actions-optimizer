@@ -39,17 +39,17 @@ jobs:
           else
             # Scheduled self-monitoring
             echo "Self-monitoring mode: checking for our own failures"
-            
+
             # Check for failures in workflow tracking and monitoring workflows
             FAILED_WORKFLOWS=$(gh api \
               "/repos/${{ github.repository }}/actions/workflows" \
               --jq '.workflows[] | select(.name | test("Workflow.*Tracker|Auto-Approve|Status Monitor")) | .id')
-            
+
             for workflow_id in $FAILED_WORKFLOWS; do
               LATEST_FAILED=$(gh api \
                 "/repos/${{ github.repository }}/actions/workflows/${workflow_id}/runs?status=failure&per_page=1" \
                 --jq '.workflow_runs[0] // empty')
-              
+
               if [ -n "$LATEST_FAILED" ]; then
                 workflow_name=$(echo "$LATEST_FAILED" | jq -r '.name')
                 echo "Found failed workflow: $workflow_name"
@@ -74,10 +74,10 @@ jobs:
         run: |
           # Search for existing issues with the workflow failure label for this specific workflow
           ISSUE_TITLE="Workflow Failure: ${WORKFLOW_NAME}"
-          
+
           # Use GitHub CLI to search for existing issues specific to this workflow
           EXISTING_ISSUE=$(gh issue list --label "workflow-failure" --state open --search "\"${ISSUE_TITLE}\" in:title" --json number,title | jq -r ".[] | select(.title == \"${ISSUE_TITLE}\") | .number")
-          
+
           if [ -n "$EXISTING_ISSUE" ]; then
             echo "issue_exists=true" >> $GITHUB_OUTPUT
             echo "issue_number=$EXISTING_ISSUE" >> $GITHUB_OUTPUT
@@ -139,7 +139,7 @@ jobs:
             --title "Workflow Failure: ${WORKFLOW_NAME}" \
             --body-file issue_body.md \
             --label "workflow-failure,automated,bug" | grep -oE '[0-9]+$')
-          
+
           echo "Created new issue #$ISSUE_NUMBER"
 
       - name: Update existing issue
@@ -157,10 +157,10 @@ jobs:
         run: |
           # Get current issue body
           CURRENT_BODY=$(gh issue view ${ISSUE_NUMBER} --json body -q '.body')
-          
+
           # Extract the failure history section and add new entry at the top
           NEW_ENTRY="${CREATED_AT} - [Run #${WORKFLOW_RUN_ID}](${WORKFLOW_URL}) on branch \`${HEAD_BRANCH}\` (${WORKFLOW_EVENT})"
-          
+
           # Update the issue body by inserting the new failure at the top of the history list
           cat > updated_body.md << EOF
           ## Workflow Failure Report
@@ -195,7 +195,7 @@ jobs:
 
           1. **${NEW_ENTRY}**
           EOF
-          
+
           # Extract existing failure history from current body (excluding the first entry which we're updating)
           echo "${CURRENT_BODY}" | sed -n '/### Failure History/,$ p' | tail -n +2 | grep -E '^[0-9]+\.' | tail -n +2 | while read -r line; do
             # Increment numbering for existing entries
@@ -204,8 +204,8 @@ jobs:
             updated_line=$(echo "$line" | sed "s/^${entry_num}\./${new_num}./")
             echo "${updated_line}" >> updated_body.md
           done
-          
+
           # Update the issue with the new body
           gh issue edit ${ISSUE_NUMBER} --body-file updated_body.md
-          
+
           echo "Updated existing issue #${ISSUE_NUMBER} with new failure at top of history list"
