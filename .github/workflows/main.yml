@@ -76,7 +76,7 @@ jobs:
           
           # Bandit security scan (fail on HIGH severity issues)
           echo "Running bandit security scan..."
-          bandit -r gh_actions_optimizer/ --format json --severity-level high --exit-zero > bandit-report.json
+          bandit -r gh_actions_optimizer/ --format json --severity-level high > bandit-report.json
           if [ -s bandit-report.json ] && [ "$(jq '.results | length' bandit-report.json)" -gt 0 ]; then
             echo "❌ High severity security issues found by bandit!"
             jq '.results[] | "File: \(.filename), Line: \(.line_number), Issue: \(.issue_text)"' bandit-report.json
