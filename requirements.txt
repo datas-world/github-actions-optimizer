@@ -1,5 +1,7 @@
-# GitHub Actions Optimizer - Runtime Dependencies
-# This file contains the runtime dependencies for the GitHub CLI extension
+# GitHub Actions Optimizer - Runtime Dependencies (Pinned Versions)
+# This file contains the pinned runtime dependencies for the GitHub CLI extension
+# Generated from requirements.in - DO NOT EDIT MANUALLY
+# Use: pip-compile requirements.in to regenerate
 
-rich>=13.0.0     # Modern terminal handling with automatic capability detection
-PyYAML>=6.0.0    # YAML processing for configuration and output formats
+rich==13.7.1      # Modern terminal handling with automatic capability detection
+PyYAML==6.0.1     # YAML processing for configuration and output formats

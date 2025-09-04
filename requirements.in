@@ -1,0 +1,6 @@
+# Runtime dependencies for GitHub Actions Optimizer
+# This file contains unpinned runtime dependencies
+# Use: pip-compile requirements.in
+
+rich>=13.0.0     # Modern terminal handling with automatic capability detection
+PyYAML>=6.0.0    # YAML processing for configuration and output formats

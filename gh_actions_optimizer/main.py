@@ -105,6 +105,12 @@ For more information: https://github.com/datas-world/github-actions-optimizer
         "--workflow", help="Specific workflow file to patch"
     )
 
+    # Generate SBOM
+    sbom_parser = generate_subparsers.add_parser(
+        "sbom", help="Generate Software Bill of Materials (SBOM)"
+    )
+    add_common_args(sbom_parser)
+
     # Validate subcommand group
     validate_parser = subparsers.add_parser(
         "validate", help="Validate configurations and setups"
@@ -182,6 +188,10 @@ def main() -> None:
                         )
 
                         cmd_generate_workflow_patch(args)
+                    case "sbom":
+                        from .generate.sbom import cmd_generate_sbom
+
+                        cmd_generate_sbom(args)
                     case _:
                         generate_cmd = args.generate_command
                         log_error(f"Unknown generate command: {generate_cmd}")

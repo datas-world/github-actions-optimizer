@@ -30,6 +30,22 @@ repos:
         files: '^gh_actions_optimizer/.*\.py$'
         types: [python]
 
+      - id: pip-audit-local
+        name: pip-audit (vulnerability scanning)
+        entry: pip-audit
+        language: system
+        args: [--desc, --format=columns, --no-deps, --disable-pip]
+        pass_filenames: false
+        always_run: true
+
+      - id: safety-local
+        name: safety (vulnerability scanning)
+        entry: safety
+        language: system
+        args: [scan, --ignore=70612]  # Ignore jinja2 sandbox escape (already patched)
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
     hooks:
