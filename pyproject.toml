@@ -38,24 +38,25 @@ keywords = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "rich>=13.0.0",  # Modern terminal handling with automatic capability detection
-    "PyYAML>=6.0.0", # YAML processing for configuration and output formats
+    "rich==13.7.1",   # Modern terminal handling with automatic capability detection
+    "PyYAML==6.0.1",  # YAML processing for configuration and output formats
 ]
 
 [project.optional-dependencies]
 dev = [
-    "black>=24.0.0",
-    "flake8>=7.0.0",
-    "mypy>=1.8.0",
-    "isort>=5.13.0",
-    "bandit>=1.7.5",
-    "pre-commit>=3.6.0",
-    "pytest>=8.0.0",
-    "pytest-cov>=4.0.0",
-    "coverage>=7.4.0",
-    "types-PyYAML>=6.0.0",  # Type stubs for PyYAML
-    "pip-audit>=2.6.0",  # Dependency vulnerability scanning
-    "safety>=3.0.0",  # Additional dependency security scanning
+    "black==25.1.0",
+    "flake8==7.3.0",
+    "mypy==1.17.1",
+    "isort==6.0.1",
+    "bandit==1.8.6",
+    "pre-commit==4.3.0",
+    "pytest==8.4.1",
+    "pytest-cov==6.2.1",
+    "coverage==7.10.6",
+    "types-PyYAML==6.0.12.20250822",  # Type stubs for PyYAML
+    "pip-audit==2.9.0",               # Vulnerability scanning for dependencies
+    "pip-tools==7.5.0",               # Dependency management and pinning
+    "safety==3.6.1",                  # Additional vulnerability scanning
     "detect-secrets>=1.4.0",  # Comprehensive secret detection
 ]
 

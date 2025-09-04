@@ -1,0 +1,33 @@
+# Development dependencies for GitHub Actions Optimizer
+# This file contains unpinned development dependencies
+# Use: pip-compile requirements-dev.in
+
+# Core runtime dependencies
+-r requirements.in
+
+# Code quality and linting
+black>=24.0.0
+flake8>=7.0.0
+mypy>=1.8.0
+isort>=5.13.0
+bandit>=1.7.5
+pre-commit>=3.6.0
+pydocstyle>=6.3.0
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.0.0
+coverage>=7.4.0
+
+# Type stubs
+types-PyYAML>=6.0.0
+
+# Security and dependency management
+pip-audit>=2.6.0
+pip-tools>=7.0.0
+safety>=3.0.0
+
+# Build tools
+build>=1.0.0
+twine>=5.0.0
+wheel>=0.42.0
