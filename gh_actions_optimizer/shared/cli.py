@@ -7,6 +7,8 @@ from typing import TextIO
 
 from rich.console import Console
 
+from .validation import InputValidator, validate_and_log_error
+
 
 class Colors:
     """Intelligent color handling with automatic terminal capability detection."""
@@ -31,12 +33,34 @@ class Colors:
     def _should_force_color(self) -> bool:
         """Check if color output should be forced."""
         force_color = os.environ.get("FORCE_COLOR", "")
+        # Enhanced sanitization for safety
+        try:
+            validated_env = InputValidator.validate_environment_variable("FORCE_COLOR", force_color)
+            force_color = validated_env[1]
+        except Exception:
+            # If validation fails, fall back to safe default
+            force_color = ""
         return force_color in ("1", "true", "True", "TRUE")
 
     def _should_disable_color(self) -> bool:
         """Check if color output should be disabled."""
         no_color = os.environ.get("NO_COLOR", "")
         force_color = os.environ.get("FORCE_COLOR", "")
+        
+        # Enhanced sanitization for safety
+        try:
+            if no_color:
+                validated = InputValidator.validate_environment_variable("NO_COLOR", no_color)
+                no_color = validated[1]
+        except Exception:
+            no_color = ""
+            
+        try:
+            if force_color:
+                validated = InputValidator.validate_environment_variable("FORCE_COLOR", force_color)
+                force_color = validated[1]
+        except Exception:
+            force_color = ""
 
         # FORCE_COLOR=0 explicitly disables color
         if force_color == "0":
@@ -189,17 +213,65 @@ def add_output_args(parser_obj: argparse.ArgumentParser) -> None:
 def check_dependencies() -> None:
     """Check if required dependencies are available."""
     import subprocess  # nosec B404
+    import shutil
 
     deps = ["gh", "jq"]
     missing = []
 
     for dep in deps:
         try:
-            subprocess.run([dep, "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Use shutil.which for safer path resolution
+            if not shutil.which(dep):
+                missing.append(dep)
+                continue
+                
+            # Validate dependency name for security
+            validate_and_log_error(InputValidator.sanitize_for_shell, dep)
+            
+            # Use explicit path and minimal arguments
+            result = subprocess.run(
+                [shutil.which(dep), "--version"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,  # Add timeout for safety
+                env={"PATH": os.environ.get("PATH", "")},  # Minimal environment
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             missing.append(dep)
 
     if missing:
         log_error(f"Missing required dependencies: {', '.join(missing)}")
         log_info("Please install the missing dependencies and try again.")
         sys.exit(1)
+
+
+def validate_parsed_args(args: argparse.Namespace) -> None:
+    """Validate parsed command-line arguments for security."""
+    # Validate repository if provided
+    if hasattr(args, "repo") and args.repo:
+        validate_and_log_error(InputValidator.validate_repository_name, args.repo)
+    
+    # Validate output file path if provided
+    if hasattr(args, "output") and args.output:
+        validate_and_log_error(InputValidator.validate_file_path, args.output, True)
+        validate_and_log_error(InputValidator.validate_filename, 
+                             os.path.basename(args.output))
+    
+    # Validate workflow file path if provided (for workflow-patch command)
+    if hasattr(args, "workflow") and args.workflow:
+        validate_and_log_error(InputValidator.validate_file_path, args.workflow, True)
+        validate_and_log_error(InputValidator.validate_file_extension,
+                             args.workflow, [".yml", ".yaml"])
+    
+    # Validate format argument
+    if hasattr(args, "format") and args.format:
+        if args.format not in ["table", "json", "yaml"]:
+            log_error(f"Invalid format: {args.format}")
+            sys.exit(1)
+    
+    # Validate duration for benchmark command
+    if hasattr(args, "duration") and args.duration is not None:
+        if not isinstance(args.duration, int) or args.duration < 1 or args.duration > 365:
+            log_error("Duration must be between 1 and 365 days")
+            sys.exit(1)

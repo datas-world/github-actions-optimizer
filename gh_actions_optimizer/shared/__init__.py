@@ -10,6 +10,7 @@ from .cli import (
     log_info,
     log_success,
     log_warn,
+    validate_parsed_args,
 )
 from .data import get_sample_security_data, get_sample_workflows
 from .github import (
@@ -27,6 +28,11 @@ from .output import (
     open_github_pricing,
     open_in_browser,
 )
+from .validation import (
+    InputValidator,
+    ValidationError,
+    validate_and_log_error,
+)
 
 __all__ = [
     # CLI utilities
@@ -39,6 +45,7 @@ __all__ = [
     "log_info",
     "log_success",
     "log_warn",
+    "validate_parsed_args",
     # Data utilities
     "get_sample_security_data",
     "get_sample_workflows",
@@ -55,4 +62,8 @@ __all__ = [
     "open_github_docs",
     "open_github_pricing",
     "open_in_browser",
+    # Validation utilities
+    "InputValidator",
+    "ValidationError",
+    "validate_and_log_error",
 ]
