@@ -90,7 +90,9 @@ def _format_analyze_table(
             for rec in result["recommendations"]:
                 output_lines.append(f"  - {rec}")
         else:
-            no_issues = f"{Colors.GREEN}No optimization issues found{Colors.NC}"
+            no_issues = (
+                f"{Colors.GREEN}No optimization issues found{Colors.NC}"
+            )
             output_lines.append(no_issues)
 
     # Output to console or file
