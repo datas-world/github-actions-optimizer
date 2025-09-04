@@ -150,7 +150,7 @@ jobs:
           # Test extension functionality directly (skip local installation due to repository name constraint)
           # GitHub CLI extensions require repository names starting with 'gh-' for local installation
           chmod +x gh-actions-optimizer
-          
+
           # Test as direct executable (equivalent to gh extension functionality)
           ./gh-actions-optimizer --help
           ./gh-actions-optimizer --version
@@ -170,6 +170,7 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build Python Package
