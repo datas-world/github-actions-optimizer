@@ -43,7 +43,7 @@ jobs:
 
       - name: Check for duplicate issues
         id: check-duplicates
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -76,7 +76,7 @@ jobs:
 
       - name: Update existing issue
         if: steps.check-duplicates.outputs.duplicate_found == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -112,7 +112,7 @@ jobs:
 
       - name: Create new security issue
         if: steps.check-duplicates.outputs.duplicate_found == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -183,7 +183,7 @@ jobs:
 
       - name: Assign to Copilot for automated resolution
         if: steps.check-duplicates.outputs.duplicate_found == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
