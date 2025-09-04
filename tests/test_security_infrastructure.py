@@ -127,8 +127,8 @@ class TestSecurityInfrastructure:
         # Create a temporary file with a more obvious fake secret
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             # Use a more obvious pattern that detect-secrets should catch
-            f.write('password = "supersecretpassword123"\n')
-            f.write('api_key = "sk-1234567890abcdef1234567890abcdef"\n')
+            f.write('password = "supersecretpassword123"  # pragma: allowlist secret\n')
+            f.write('api_key = "sk-1234567890abcdef1234567890abcdef"  # pragma: allowlist secret\n')
             temp_file = f.name
         
         try:
