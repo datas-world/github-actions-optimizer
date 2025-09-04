@@ -47,10 +47,7 @@ def _format_cost_table(
     output_lines = []
 
     if not args.quiet:
-        header = (
-            f"{Colors.BOLD}GitHub Actions Runner Costs "
-            f"(per minute){Colors.NC}"
-        )
+        header = f"{Colors.BOLD}GitHub Actions Runner Costs " f"(per minute){Colors.NC}"
         separator = "=" * 50
         output_lines.extend([header, separator, ""])
 

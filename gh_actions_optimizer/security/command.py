@@ -2,7 +2,6 @@
 
 import argparse
 import json
-from typing import Any
 
 import yaml
 
@@ -49,9 +48,7 @@ def cmd_security(args: argparse.Namespace) -> None:
                             issues.append("Direct secrets usage detected")
 
                         # Check for pull_request_target without proper security
-                        target_check = (
-                            "if: github.event_name != 'pull_request_target'"
-                        )
+                        target_check = "if: github.event_name != 'pull_request_target'"
                         if (
                             "pull_request_target" in content
                             and target_check not in content
@@ -59,13 +56,9 @@ def cmd_security(args: argparse.Namespace) -> None:
                             issues.append("Unsafe pull_request_target usage")
 
                         # Check for script injection vulnerabilities
-                        injection_pattern = (
-                            "${{ github.event.head_commit.message }}"
-                        )
+                        injection_pattern = "${{ github.event.head_commit.message }}"
                         if injection_pattern in content:
-                            issues.append(
-                                "Potential script injection vulnerability"
-                            )
+                            issues.append("Potential script injection vulnerability")
 
                         # Check for insufficient permissions
                         if "permissions:" not in content:
@@ -79,10 +72,7 @@ def cmd_security(args: argparse.Namespace) -> None:
                                 if not action_ref.startswith(
                                     '"'
                                 ) and not action_ref.startswith("'"):
-                                    if (
-                                        "@main" in action_ref
-                                        or "@master" in action_ref
-                                    ):
+                                    if "@main" in action_ref or "@master" in action_ref:
                                         issues.append(
                                             f"Action not pinned to specific "
                                             f"version: {action_ref}"
@@ -148,9 +138,7 @@ def cmd_security(args: argparse.Namespace) -> None:
         else:
             for issue_data in security_issues:
                 severity_color = (
-                    Colors.RED
-                    if issue_data["severity"] == "HIGH"
-                    else Colors.YELLOW
+                    Colors.RED if issue_data["severity"] == "HIGH" else Colors.YELLOW
                 )
                 print(
                     f"\n{Colors.BOLD}{issue_data['workflow']}{Colors.NC} - "

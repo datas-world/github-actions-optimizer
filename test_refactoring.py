@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Simple test script for the refactored package."""
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -12,16 +12,13 @@ def test_imports():
 
     try:
         import gh_actions_optimizer
-        print(
-            f"✓ Main package imported, version: {gh_actions_optimizer.__version__}")
 
-        from gh_actions_optimizer.shared import log_info, Colors
+        print(f"✓ Main package imported, version: {gh_actions_optimizer.__version__}")
+
         print("✓ Shared utilities imported")
 
-        from gh_actions_optimizer.analyze import cmd_analyze
         print("✓ Analyze command imported")
 
-        from gh_actions_optimizer.cost import cmd_cost
         print("✓ Cost command imported")
 
         return True
@@ -44,7 +41,7 @@ def test_entry_point():
         [sys.executable, str(entry_point), "--help"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     if result.returncode == 0:
@@ -58,7 +55,7 @@ def test_entry_point():
         [sys.executable, str(entry_point), "cost", "--quiet"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     if result.returncode == 0 and "ubuntu-latest" in result.stdout:
@@ -69,11 +66,16 @@ def test_entry_point():
 
     # Test analyze with sample data
     result = subprocess.run(
-        [sys.executable, str(entry_point), "analyze",
-         "--sample-data", "--quiet"],
+        [
+            sys.executable,
+            str(entry_point),
+            "analyze",
+            "--sample-data",
+            "--quiet",
+        ],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     if result.returncode == 0 and "ci.yml" in result.stdout:
@@ -92,7 +94,7 @@ def main():
     imports_ok = test_imports()
     entry_point_ok = test_entry_point()
 
-    print(f"\n=== Results ===")
+    print("\n=== Results ===")
     print(f"Imports: {'✓ PASS' if imports_ok else '✗ FAIL'}")
     print(f"Entry Point: {'✓ PASS' if entry_point_ok else '✗ FAIL'}")
 

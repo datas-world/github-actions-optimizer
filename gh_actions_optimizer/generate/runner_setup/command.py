@@ -3,7 +3,7 @@
 import argparse
 import json
 
-from ...shared import log_info, log_success, Colors
+from ...shared import Colors, log_info, log_success
 
 
 def cmd_generate_runner_setup(args: argparse.Namespace) -> None:
@@ -20,36 +20,31 @@ def cmd_generate_runner_setup(args: argparse.Namespace) -> None:
         "strategy": {
             "matrix": {
                 "os": ["ubuntu-latest"],
-                "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+                "python-version": ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"],
             }
         },
         "runs-on": "${{ matrix.os }}",
         "timeout-minutes": 10,
         "concurrency": {
             "group": "${{ github.workflow }}-${{ github.ref }}",
-            "cancel-in-progress": True
+            "cancel-in-progress": True,
         },
         "steps": [
-            {
-                "name": "Checkout code",
-                "uses": "actions/checkout@v4"
-            },
+            {"name": "Checkout code", "uses": "actions/checkout@v4"},
             {
                 "name": "Set up Python",
                 "uses": "actions/setup-python@v5",
-                "with": {
-                    "python-version": "${{ matrix.python-version }}"
-                }
+                "with": {"python-version": "${{ matrix.python-version }}"},
             },
             {
                 "name": "Cache dependencies",
                 "uses": "actions/cache@v4",
                 "with": {
                     "path": "~/.cache/pip",
-                    "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}"
-                }
-            }
-        ]
+                    "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}",
+                },
+            },
+        ],
     }
 
     if args.format == "json":
@@ -65,8 +60,7 @@ def cmd_generate_runner_setup(args: argparse.Namespace) -> None:
         print("strategy:")
         print("  matrix:")
         print("    os: [ubuntu-latest]")
-        print(
-            "    python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']")
+        print("    python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']")
         print("runs-on: ${{ matrix.os }}")
         print("timeout-minutes: 10")
         print("concurrency:")

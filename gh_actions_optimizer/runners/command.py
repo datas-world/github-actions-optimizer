@@ -5,7 +5,7 @@ import json
 import webbrowser
 from typing import Any
 
-from ..shared import log_info, log_success, Colors
+from ..shared import Colors, log_info, log_success
 
 
 def cmd_runners(args: argparse.Namespace) -> None:
@@ -18,12 +18,16 @@ def cmd_runners(args: argparse.Namespace) -> None:
         "runner_analysis": {
             "ubuntu-latest": {
                 "cost_per_minute": 0.008,
-                "recommended_for": ["Linux builds", "Docker operations", "Most CI/CD tasks"],
+                "recommended_for": [
+                    "Linux builds",
+                    "Docker operations",
+                    "Most CI/CD tasks",
+                ],
                 "optimization_tips": [
                     "Use for most workloads due to lower cost",
                     "Enable concurrency controls",
-                    "Add dependency caching"
-                ]
+                    "Add dependency caching",
+                ],
             },
             "windows-latest": {
                 "cost_per_minute": 0.016,
@@ -31,8 +35,8 @@ def cmd_runners(args: argparse.Namespace) -> None:
                 "optimization_tips": [
                     "Use only when Windows-specific features needed",
                     "Consider matrix strategies to reduce redundant runs",
-                    "Implement aggressive caching"
-                ]
+                    "Implement aggressive caching",
+                ],
             },
             "macos-latest": {
                 "cost_per_minute": 0.08,
@@ -40,9 +44,9 @@ def cmd_runners(args: argparse.Namespace) -> None:
                 "optimization_tips": [
                     "Use sparingly due to high cost",
                     "Combine multiple tasks per job",
-                    "Use conditional execution to skip unnecessary runs"
-                ]
-            }
+                    "Use conditional execution to skip unnecessary runs",
+                ],
+            },
         },
         "general_recommendations": [
             "Prefer ubuntu-latest for most workloads",
@@ -50,7 +54,7 @@ def cmd_runners(args: argparse.Namespace) -> None:
             "Implement concurrency controls to prevent redundant runs",
             "Add appropriate timeouts to prevent runaway jobs",
             "Cache dependencies aggressively",
-            "Use self-hosted runners for high-volume workloads"
+            "Use self-hosted runners for high-volume workloads",
         ],
         "cost_optimization": {
             "potential_savings": "15-40% through runner optimization",
@@ -58,14 +62,15 @@ def cmd_runners(args: argparse.Namespace) -> None:
                 "Replace unnecessary macOS runners with ubuntu",
                 "Add concurrency controls",
                 "Implement dependency caching",
-                "Set reasonable timeouts"
-            ]
-        }
+                "Set reasonable timeouts",
+            ],
+        },
     }
 
     if args.web:
         webbrowser.open(
-            "https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners")
+            "https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners"
+        )
         log_success("Opened GitHub Actions documentation in web browser")
 
     if args.format == "json":
@@ -77,6 +82,7 @@ def cmd_runners(args: argparse.Namespace) -> None:
             print(json.dumps(runner_data, indent=2))
     elif args.format == "yaml":
         import yaml
+
         if args.output:
             with open(args.output, "w") as f:
                 yaml.dump(runner_data, f, default_flow_style=False)
@@ -101,7 +107,7 @@ def cmd_runners(args: argparse.Namespace) -> None:
             print(f"  - {rec}")
 
         print(f"\n{Colors.YELLOW}Cost Optimization Potential:{Colors.NC}")
-        cost_data = runner_data['cost_optimization']
+        cost_data = runner_data["cost_optimization"]
         print(f"  Potential savings: {cost_data['potential_savings']}")
         print("  Quick wins:")
         for win in cost_data["quick_wins"]:

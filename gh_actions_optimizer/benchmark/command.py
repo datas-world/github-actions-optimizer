@@ -3,7 +3,7 @@
 import argparse
 import json
 
-from ..shared import log_info, log_success, Colors
+from ..shared import Colors, log_info, log_success
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
@@ -57,8 +57,7 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         print(
             f"Estimated Monthly Cost: ${benchmark_data['metrics']['estimated_monthly_cost']}"
         )
-        print(
-            f"Success Rate: {benchmark_data['metrics']['success_rate']*100:.1f}%")
+        print(f"Success Rate: {benchmark_data['metrics']['success_rate']*100:.1f}%")
         print(f"\n{Colors.BLUE}Optimization Potential:{Colors.NC}")
         print(f"  {benchmark_data['metrics']['optimization_potential']}")
 

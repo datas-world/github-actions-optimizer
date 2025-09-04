@@ -29,8 +29,7 @@ For more information: https://github.com/datas-world/github-actions-optimizer
         "--version", action="version", version=f"{__name__} {__version__}"
     )
 
-    subparsers = parser.add_subparsers(
-        dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Analyze command
     analyze_parser = subparsers.add_parser(
@@ -146,24 +145,23 @@ def main() -> None:
         match args.command:
             case "analyze":
                 from .analyze import cmd_analyze
+
                 cmd_analyze(args)
             case "cost":
                 from .cost import cmd_cost
+
                 cmd_cost(args)
             case "security":
                 from .security import cmd_security
+
                 cmd_security(args)
             case "runners":
                 from .runners import cmd_runners
+
                 cmd_runners(args)
             case "generate":
-                if (
-                    not hasattr(args, "generate_command")
-                    or not args.generate_command
-                ):
-                    log_error(
-                        "Generate subcommand required. Use --help for options."
-                    )
+                if not hasattr(args, "generate_command") or not args.generate_command:
+                    log_error("Generate subcommand required. Use --help for options.")
                     sys.exit(1)
 
                 match args.generate_command:
@@ -171,29 +169,27 @@ def main() -> None:
                         from .generate.runner_setup import (
                             cmd_generate_runner_setup,
                         )
+
                         cmd_generate_runner_setup(args)
                     case "workflow-patch":
                         from .generate.workflow_patch import (
                             cmd_generate_workflow_patch,
                         )
+
                         cmd_generate_workflow_patch(args)
                     case _:
                         generate_cmd = args.generate_command
                         log_error(f"Unknown generate command: {generate_cmd}")
                         sys.exit(1)
             case "validate":
-                if (
-                    not hasattr(args, "validate_command")
-                    or not args.validate_command
-                ):
-                    log_error(
-                        "Validate subcommand required. Use --help for options."
-                    )
+                if not hasattr(args, "validate_command") or not args.validate_command:
+                    log_error("Validate subcommand required. Use --help for options.")
                     sys.exit(1)
 
                 match args.validate_command:
                     case "runners":
                         from .validate.runners import cmd_validate_runners
+
                         cmd_validate_runners(args)
                     case _:
                         validate_cmd = args.validate_command
@@ -201,17 +197,20 @@ def main() -> None:
                         sys.exit(1)
             case "benchmark":
                 from .benchmark import cmd_benchmark
+
                 cmd_benchmark(args)
             case _:
                 log_error(f"Unknown command: {args.command}")
                 sys.exit(1)
     except KeyboardInterrupt:
         from .shared import log_info
+
         log_info("Operation cancelled by user")
         sys.exit(1)
     except Exception as e:
         log_error(f"Unexpected error: {e}")
         if hasattr(args, "verbose") and args.verbose:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)

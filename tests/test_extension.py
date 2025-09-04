@@ -2,9 +2,6 @@
 
 import subprocess
 import sys
-from pathlib import Path
-
-import pytest
 
 
 def test_extension_executable(extension_path):
@@ -21,7 +18,7 @@ def test_extension_help(extension_path):
         [sys.executable, str(extension_path), "--help"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -38,7 +35,7 @@ def test_extension_version(extension_path):
         [sys.executable, str(extension_path), "--version"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -52,7 +49,7 @@ def test_cost_command(extension_path):
         [sys.executable, str(extension_path), "cost", "--format", "json"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -66,7 +63,7 @@ def test_runners_command(extension_path):
         [sys.executable, str(extension_path), "runners", "--format", "json"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0

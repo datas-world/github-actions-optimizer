@@ -1,9 +1,9 @@
 """Test configuration and fixtures for pytest."""
 
-import pytest
 import subprocess
-import sys
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture
@@ -15,13 +15,11 @@ def extension_path():
 @pytest.fixture
 def mock_gh_command(monkeypatch):
     """Mock the gh command for testing."""
+
     def mock_run(*args, **kwargs):
         # Mock successful gh command execution
         return subprocess.CompletedProcess(
-            args=args[0],
-            returncode=0,
-            stdout='{"mock": "data"}',
-            stderr=""
+            args=args[0], returncode=0, stdout='{"mock": "data"}', stderr=""
         )
 
     monkeypatch.setattr(subprocess, "run", mock_run)

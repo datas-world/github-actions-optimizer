@@ -27,7 +27,7 @@ def test_new_extension_help(new_extension_path):
         [sys.executable, str(new_extension_path), "--help"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -44,7 +44,7 @@ def test_new_extension_version(new_extension_path):
         [sys.executable, str(new_extension_path), "--version"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -58,7 +58,7 @@ def test_new_cost_command(new_extension_path):
         [sys.executable, str(new_extension_path), "cost", "--format", "json"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -75,11 +75,11 @@ def test_new_analyze_sample_data(new_extension_path):
             "analyze",
             "--sample-data",
             "--format",
-            "json"
+            "json",
         ],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -91,8 +91,9 @@ def test_package_imports():
     """Test that the package can be imported correctly."""
     try:
         import gh_actions_optimizer
-        assert hasattr(gh_actions_optimizer, 'main')
-        assert hasattr(gh_actions_optimizer, '__version__')
+
+        assert hasattr(gh_actions_optimizer, "main")
+        assert hasattr(gh_actions_optimizer, "__version__")
         assert gh_actions_optimizer.__version__ == "v0.1.0-dev"
     except ImportError as e:
         pytest.fail(f"Failed to import package: {e}")
@@ -101,9 +102,9 @@ def test_package_imports():
 def test_subpackage_imports():
     """Test that subpackages can be imported."""
     try:
-        from gh_actions_optimizer.shared import log_info, Colors
         from gh_actions_optimizer.analyze import cmd_analyze
         from gh_actions_optimizer.cost import cmd_cost
+        from gh_actions_optimizer.shared import Colors, log_info
 
         # Test that functions are callable
         assert callable(log_info)
@@ -111,8 +112,8 @@ def test_subpackage_imports():
         assert callable(cmd_cost)
 
         # Test Colors class
-        assert hasattr(Colors, 'RED')
-        assert hasattr(Colors, 'GREEN')
+        assert hasattr(Colors, "RED")
+        assert hasattr(Colors, "GREEN")
 
     except ImportError as e:
         pytest.fail(f"Failed to import subpackages: {e}")
@@ -127,7 +128,7 @@ def test_implemented_commands(new_extension_path):
             [sys.executable, str(new_extension_path), command, "--quiet"],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
 
         assert result.returncode == 0
