@@ -161,7 +161,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=gh_actions_optimizer --cov-report=xml --cov-report=term-missing tests/
+          pytest --cov --cov-branch --cov-report=xml --cov-report=term-missing tests/
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.13'
