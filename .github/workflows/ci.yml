@@ -96,8 +96,13 @@ jobs:
           pip install pytest pytest-cov coverage
           pip install -e .[dev]
 
-      - name: Install jq (required for extension)
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install system dependencies
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update
+          sudo apt-get install -y jq
+          # Install act for local testing (see GitHub Issue #2 - Caching Removal)
+          curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 
       - name: Test extension functionality
         run: |
