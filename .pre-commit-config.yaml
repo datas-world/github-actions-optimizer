@@ -44,6 +44,31 @@ repos:
         args: [--skip, "B603,B607"]
         files: '^(gh_actions_optimizer/.*\.py|gh-actions-optimizer)$'
 
+  - repo: local
+    hooks:
+      - id: pip-audit
+        name: pip-audit (dependency vulnerability scan)
+        entry: pip-audit
+        language: system
+        args: [--desc, --strict]
+        pass_filenames: false
+        always_run: true
+        
+      - id: safety-scan
+        name: safety (dependency security scan)
+        entry: safety
+        language: system
+        args: [scan, --json]
+        pass_filenames: false
+        always_run: true
+
+      - id: detect-secrets
+        name: detect-secrets (secret detection)
+        entry: detect-secrets-hook
+        language: system
+        args: [--baseline, .secrets.baseline]
+        types: [text]
+
   - repo: https://github.com/pycqa/pydocstyle
     rev: 6.3.0
     hooks:
