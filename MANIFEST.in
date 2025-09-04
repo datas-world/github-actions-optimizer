@@ -5,7 +5,7 @@ include gh-actions-optimizer
 
 recursive-include gh_actions_optimizer *.py
 recursive-include docs *.md
-recursive-incude tests *.py
+recursive-include tests *.py
 
 global-exclude *.pyc
 global-exclude __pycache__
