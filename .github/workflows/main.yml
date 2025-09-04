@@ -249,7 +249,8 @@ jobs:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0'
+    # Skip on PRs to avoid extension pack issues, only run on main branch pushes
+    if: (github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0') && github.event_name != 'pull_request'
 
     strategy:
       fail-fast: false
@@ -261,12 +262,22 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+          # For PR analysis, ensure we have both base and head
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@4f3212b61783c3c68e8309a0f18a699764811cda # v3.27.1
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
+          config: |
+            disable-default-path-filters: true
+        env:
+          # Completely disable PR diff analysis and extension packs - multiple flags
+          CODEQL_ACTION_FEATURE_ANALYSIS_FILTER: false
+          CODEQL_ACTION_FEATURE_WILL_UPLOAD: true
+          CODEQL_DISABLE_EXTENSION_PACK: true
+          CODEQL_DISABLE_PR_DIFF_RANGE: true
 
       - name: Set up Python
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
