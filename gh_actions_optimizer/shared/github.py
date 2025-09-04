@@ -3,12 +3,13 @@
 import argparse
 import json
 import os
-import subprocess  # nosec B404
+import subprocess
 import sys
 import urllib.request
 from typing import Any, Dict, List, Optional, cast
 
 from .cli import log_error, log_info
+from .subprocess import SubprocessSecurityError, safe_gh_command, safe_git_command
 
 
 def get_current_repo() -> Optional[str]:
@@ -21,31 +22,28 @@ def get_current_repo() -> Optional[str]:
 
     try:
         # Try gh CLI second
-        result = subprocess.run(
-            ["gh", "repo", "view", "--json", "nameWithOwner"],
-            capture_output=True,
-            text=True,
-            check=True,
+        result = safe_gh_command(
+            ["repo", "view", "--json", "nameWithOwner"],
+            timeout=30,
         )
         repo_info = json.loads(result.stdout)
         repo_raw = repo_info.get("nameWithOwner")
         if repo_raw and isinstance(repo_raw, str):
             log_info(f"Using gh CLI detected repository: {repo_raw}")
             return cast(str, repo_raw)
-    except (
-        subprocess.CalledProcessError,
-        json.JSONDecodeError,
-        FileNotFoundError,
-    ):
-        pass
+    except SubprocessSecurityError:
+        # Re-raise security errors - do not suppress them
+        raise
+    except Exception:
+        # Expected errors when gh CLI is not available or not in a repository
+        # This includes CalledProcessError, TimeoutExpired, JSONDecodeError, etc.
+        log_info("gh CLI repository detection failed, trying git remote")
 
     try:
         # Fallback to git remote
-        result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            check=True,
+        result = safe_git_command(
+            ["remote", "get-url", "origin"],
+            timeout=15,
         )
         remote_url = result.stdout.strip()
         # Parse GitHub URL to get owner/repo
@@ -57,8 +55,13 @@ def get_current_repo() -> Optional[str]:
                 repo = f"{parts[0]}/{parts[1]}"
                 log_info(f"Using git remote detected repository: {repo}")
                 return repo
-    except subprocess.CalledProcessError:
-        pass
+    except SubprocessSecurityError:
+        # Re-raise security errors - do not suppress them
+        raise
+    except Exception:
+        # Expected errors when git is not available or not in a repository
+        # This includes CalledProcessError, TimeoutExpired, etc.
+        log_info("git remote repository detection failed")
 
     return None
 
@@ -112,16 +115,17 @@ def get_repo_for_command(args: argparse.Namespace) -> str:
 
 def run_gh_command(
     args: List[str], check: bool = True
-) -> subprocess.CompletedProcess[str]:
-    """Run a gh CLI command."""
+) -> Any:  # Using Any temporarily for backward compatibility
+    """Run a gh CLI command.
+
+    This function is deprecated. Use safe_gh_command instead.
+    """
+    log_info("Using legacy run_gh_command. Consider upgrading to safe_gh_command.")
     try:
-        result = subprocess.run(
-            ["gh"] + args, capture_output=True, text=True, check=check
-        )
-        return result
-    except subprocess.CalledProcessError as e:
+        return safe_gh_command(args, check=check)
+    except Exception as e:
         log_error(f"GitHub CLI command failed: {e}")
-        if e.stderr:
+        if hasattr(e, "stderr") and e.stderr:
             log_error(f"Error output: {e.stderr}")
         sys.exit(1)
 
@@ -130,7 +134,7 @@ def get_workflows(repo: str) -> List[Dict[str, Any]]:
     """Get workflow files from repository."""
     log_info(f"Fetching workflows from {repo}...")
 
-    result = run_gh_command(
+    result = safe_gh_command(
         [
             "api",
             f"repos/{repo}/contents/.github/workflows",
@@ -139,6 +143,7 @@ def get_workflows(repo: str) -> List[Dict[str, Any]]:
             '(.name | endswith(".yml") or endswith(".yaml")))',
         ],
         check=False,
+        timeout=60,
     )
 
     if result.returncode != 0:

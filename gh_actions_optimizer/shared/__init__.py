@@ -27,6 +27,14 @@ from .output import (
     open_github_pricing,
     open_in_browser,
 )
+from .subprocess import (
+    SubprocessSecurityError,
+    check_command_availability,
+    safe_gh_command,
+    safe_git_command,
+    safe_run,
+    sanitize_for_logging,
+)
 
 __all__ = [
     # CLI utilities
@@ -55,4 +63,11 @@ __all__ = [
     "open_github_docs",
     "open_github_pricing",
     "open_in_browser",
+    # Subprocess utilities
+    "SubprocessSecurityError",
+    "check_command_availability",
+    "safe_gh_command",
+    "safe_git_command",
+    "safe_run",
+    "sanitize_for_logging",
 ]
