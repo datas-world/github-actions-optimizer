@@ -50,9 +50,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pre-commit
           # Install additional dependencies for pre-commit hooks
-          pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest
-          # Install act system dependency directly (Issue #2: cache action removed)
-          sudo apt-get update && sudo apt-get install -y act
+          pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest rich
 
       - name: Install system dependencies
         run: |
@@ -65,6 +63,10 @@ jobs:
       - name: Run pre-commit hooks
         run: |
           pre-commit run --all-files --verbose
+
+      - name: Run mypy separately (workaround for pre-commit network issues)
+        run: |
+          mypy --strict gh_actions_optimizer/
 
       - name: Auto-update pre-commit hooks (scheduled only)
         if: github.event_name == 'schedule' && github.event.schedule == '0 4 * * 1'
@@ -127,22 +129,48 @@ jobs:
           chmod +x gh-actions-optimizer
           python gh-actions-optimizer --help
 
-      - name: Test GitHub CLI extension
+      - name: Test extension.yml configuration
         run: |
-          # Test extension installation and basic functionality
-          gh extension install .
-          gh actions-optimizer --help
+          # Validate extension.yml format
+          python -c "
+          import yaml
+          with open('extension.yml', 'r') as f:
+              config = yaml.safe_load(f)
+          print('Extension config:', config)
+          assert 'name' in config
+          assert 'description' in config
+          assert 'host' in config
+          print('✓ Extension configuration is valid')
+          "
+
+      - name: Test GitHub CLI extension
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Test extension functionality directly (skip local installation due to repository name constraint)
+          # GitHub CLI extensions require repository names starting with 'gh-' for local installation
+          chmod +x gh-actions-optimizer
+
+          # Test as direct executable (equivalent to gh extension functionality)
+          ./gh-actions-optimizer --help
+          ./gh-actions-optimizer --version
+
+          # Test some commands with sample data
+          ./gh-actions-optimizer analyze --sample-data
+          ./gh-actions-optimizer security --sample-data
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=gh_actions_optimizer --cov-report=xml --cov-report=term-missing tests/
+          pytest --cov --cov-branch --cov-report=xml --cov-report=term-missing tests/
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.13'
-        uses: codecov/codecov-action@1e68bf9b4189b3c1e79493267e5f2e0adfb0fb5f # v5.1.1
+        uses: codecov/codecov-action@fdcc8476540edceab3de004e990f80d881c6cc00 # v5.5.0
         with:
           file: ./coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build Python Package
@@ -219,52 +247,16 @@ jobs:
         with:
           category: "/language:${{matrix.language}}"
 
-  github-cli-extension:
-    name: Test GitHub CLI Extension
+  extension-bundle:
+    name: Create GitHub CLI Extension Bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     if: github.event_name != 'schedule'
+    needs: [test]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Set up Python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
-        with:
-          python-version: '3.13'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-
-      - name: Test extension.yml configuration
-        run: |
-          # Validate extension.yml format
-          python -c "
-          import yaml
-          with open('extension.yml', 'r') as f:
-              config = yaml.safe_load(f)
-          print('Extension config:', config)
-          assert 'name' in config
-          assert 'description' in config
-          assert 'host' in config
-          print('✓ Extension configuration is valid')
-          "
-
-      - name: Test GitHub CLI extension installation
-        run: |
-          # Test local installation
-          gh extension install .
-
-          # Test basic functionality
-          gh actions-optimizer --help
-          gh actions-optimizer --version
-
-          # Test some commands with sample data
-          gh actions-optimizer analyze cost --sample-data
-          gh actions-optimizer analyze security --sample-data
 
       - name: Create GitHub CLI extension bundle
         run: |

@@ -4,10 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
-
-def test_extension_executable(extension_path):
+def test_extension_executable(extension_path: Path) -> None:
     """Test that the extension is executable."""
     assert extension_path.exists()
     assert extension_path.is_file()
@@ -15,13 +13,13 @@ def test_extension_executable(extension_path):
     assert extension_path.stat().st_mode & 0o111
 
 
-def test_extension_help(extension_path):
+def test_extension_help(extension_path: Path) -> None:
     """Test that the extension shows help."""
     result = subprocess.run(
         [sys.executable, str(extension_path), "--help"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -32,13 +30,13 @@ def test_extension_help(extension_path):
     assert "runners" in result.stdout
 
 
-def test_extension_version(extension_path):
+def test_extension_version(extension_path: Path) -> None:
     """Test that the extension shows version."""
     result = subprocess.run(
         [sys.executable, str(extension_path), "--version"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -46,13 +44,13 @@ def test_extension_version(extension_path):
     assert "v0.1.0-dev" in result.stdout
 
 
-def test_cost_command(extension_path):
+def test_cost_command(extension_path: Path) -> None:
     """Test the cost command."""
     result = subprocess.run(
         [sys.executable, str(extension_path), "cost", "--format", "json"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
@@ -60,13 +58,13 @@ def test_cost_command(extension_path):
     assert "ubuntu-latest" in result.stdout
 
 
-def test_runners_command(extension_path):
+def test_runners_command(extension_path: Path) -> None:
     """Test the runners command."""
     result = subprocess.run(
         [sys.executable, str(extension_path), "runners", "--format", "json"],
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     assert result.returncode == 0
