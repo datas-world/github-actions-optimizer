@@ -140,6 +140,8 @@ jobs:
           "
 
       - name: Test GitHub CLI extension
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Test extension installation and basic functionality
           gh extension install .
