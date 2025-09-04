@@ -4,13 +4,13 @@ repos:
     hooks:
       - id: black
         language_version: python3
-        files: ^gh-actions-optimizer$
+        files: '^(gh_actions_optimizer/.*\.py|gh-actions-optimizer)$'
 
   - repo: https://github.com/pycqa/isort
     rev: 6.0.1
     hooks:
       - id: isort
-        files: ^gh-actions-optimizer$
+        files: '^(gh_actions_optimizer/.*\.py|gh-actions-optimizer)$'
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
@@ -18,29 +18,31 @@ repos:
       - id: flake8
         additional_dependencies: [flake8-docstrings]
         args: [--max-line-length=100, --extend-ignore=W503]
-        files: ^gh-actions-optimizer$
+        files: '^(gh_actions_optimizer/.*\.py|gh-actions-optimizer)$'
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
+  - repo: local
     hooks:
-      - id: mypy
+      - id: mypy-local
+        name: mypy (local)
+        entry: mypy
+        language: system
         args: [--strict]
-        files: ^gh-actions-optimizer$
-        additional_dependencies: [types-PyYAML]
+        files: '^gh_actions_optimizer/.*\.py$'
+        types: [python]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
     hooks:
       - id: bandit
         args: [--skip, "B603,B607"]
-        files: ^gh-actions-optimizer$
+        files: '^(gh_actions_optimizer/.*\.py|gh-actions-optimizer)$'
 
   - repo: https://github.com/pycqa/pydocstyle
     rev: 6.3.0
     hooks:
       - id: pydocstyle
         args: [--convention=google]
-        files: ^gh-actions-optimizer$
+        files: '^(gh_actions_optimizer/.*\.py|gh-actions-optimizer)$'
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

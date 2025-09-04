@@ -1,0 +1,5 @@
+# GitHub Actions Optimizer - Runtime Dependencies
+# This file contains the runtime dependencies for the GitHub CLI extension
+
+rich>=13.0.0     # Modern terminal handling with automatic capability detection
+PyYAML>=6.0.0    # YAML processing for configuration and output formats

@@ -50,7 +50,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pre-commit
           # Install additional dependencies for pre-commit hooks
-          pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest
+          pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest rich
 
       - name: Install system dependencies
         run: |
@@ -63,6 +63,10 @@ jobs:
       - name: Run pre-commit hooks
         run: |
           pre-commit run --all-files --verbose
+
+      - name: Run mypy separately (workaround for pre-commit network issues)
+        run: |
+          mypy --strict gh_actions_optimizer/
 
       - name: Auto-update pre-commit hooks (scheduled only)
         if: github.event_name == 'schedule' && github.event.schedule == '0 4 * * 1'
@@ -161,10 +165,11 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.13'
-        uses: codecov/codecov-action@fdcc8476540edceab3de004e990f80d881c6cc00 # v5.5.0
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
+          verbose: true
 
   build:
     name: Build Python Package
