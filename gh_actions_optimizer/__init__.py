@@ -13,7 +13,7 @@ Features:
 
 # Extension metadata
 __version__ = "v0.1.0-dev"
-__name__ = "actions-optimizer"
+__name__ = "gh-actions-optimizer"
 __description__ = (
     "Optimize GitHub Actions workflows for cost, performance, and security"
 )

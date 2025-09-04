@@ -143,14 +143,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Test extension installation and basic functionality
-          gh extension install .
-          gh actions-optimizer --help
-          gh actions-optimizer --version
+          # Test extension functionality directly (skip local installation due to repository name constraint)
+          # GitHub CLI extensions require repository names starting with 'gh-' for local installation
+          chmod +x gh-actions-optimizer
+          
+          # Test as direct executable (equivalent to gh extension functionality)
+          ./gh-actions-optimizer --help
+          ./gh-actions-optimizer --version
 
           # Test some commands with sample data
-          gh actions-optimizer analyze cost --sample-data
-          gh actions-optimizer analyze security --sample-data
+          ./gh-actions-optimizer analyze --sample-data
+          ./gh-actions-optimizer security --sample-data
 
       - name: Run tests with coverage
         run: |
