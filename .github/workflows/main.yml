@@ -215,8 +215,7 @@ jobs:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Skip on PRs to avoid extension pack issues, only run on main branch pushes
-    if: (github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0') && github.event_name != 'pull_request'
+    if: github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0'
 
     strategy:
       fail-fast: false
