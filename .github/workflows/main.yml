@@ -1,0 +1,288 @@
+name: Main CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 2 AM UTC to catch dependency issues
+    - cron: '0 2 * * *'
+    # Auto-update pre-commit hooks weekly on Mondays at 4 AM UTC
+    - cron: '0 4 * * 1'
+    # Run CodeQL analysis weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  FORCE_COLOR: "1"
+
+permissions:
+  contents: write
+  security-events: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  pre-commit:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name != 'schedule' || github.event.schedule == '0 4 * * 1'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit
+          # Install additional dependencies for pre-commit hooks
+          pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest
+          # Install act system dependency directly (Issue #2: cache action removed)
+          sudo apt-get update && sudo apt-get install -y act
+
+      - name: Install system dependencies
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update
+          sudo apt-get install -y jq
+          # Install act for local testing (see GitHub Issue #2 - Caching Removal)
+          curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+      - name: Run pre-commit hooks
+        run: |
+          pre-commit run --all-files --verbose
+
+      - name: Auto-update pre-commit hooks (scheduled only)
+        if: github.event_name == 'schedule' && github.event.schedule == '0 4 * * 1'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # Update pre-commit hooks
+          pre-commit autoupdate
+
+          # Check if there are changes
+          if git diff --quiet; then
+            echo "No pre-commit hook updates available"
+          else
+            # Commit and push changes
+            git add .pre-commit-config.yaml
+            git commit -m "chore: auto-update pre-commit hooks
+
+            - Updated by GitHub Actions scheduled workflow
+            - Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+            git push
+          fi
+
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name != 'schedule' || github.event.schedule == '0 2 * * *'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov coverage
+          pip install -e .[dev]
+
+      - name: Install system dependencies
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update
+          sudo apt-get install -y jq
+          # Install act for local testing (see GitHub Issue #2 - Caching Removal)
+          curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+      - name: Test extension functionality
+        run: |
+          chmod +x gh-actions-optimizer
+          python gh-actions-optimizer --help
+
+      - name: Test GitHub CLI extension
+        run: |
+          # Test extension installation and basic functionality
+          gh extension install .
+          gh actions-optimizer --help
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=gh_actions_optimizer --cov-report=xml --cov-report=term-missing tests/
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.13'
+        uses: codecov/codecov-action@1e68bf9b4189b3c1e79493267e5f2e0adfb0fb5f # v5.1.1
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
+
+  build:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name != 'schedule'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine check-manifest
+
+      - name: Verify package manifest
+        run: check-manifest
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: |
+          twine check dist/*
+          python -m pip install dist/*.whl
+          gh-actions-optimizer --version
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: python-package-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+
+  security:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@4f3212b61783c3c68e8309a0f18a699764811cda # v3.27.1
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@4f3212b61783c3c68e8309a0f18a699764811cda # v3.27.1
+        with:
+          category: "/language:${{matrix.language}}"
+
+  github-cli-extension:
+    name: Test GitHub CLI Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name != 'schedule'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Test extension.yml configuration
+        run: |
+          # Validate extension.yml format
+          python -c "
+          import yaml
+          with open('extension.yml', 'r') as f:
+              config = yaml.safe_load(f)
+          print('Extension config:', config)
+          assert 'name' in config
+          assert 'description' in config
+          assert 'host' in config
+          print('✓ Extension configuration is valid')
+          "
+
+      - name: Test GitHub CLI extension installation
+        run: |
+          # Test local installation
+          gh extension install .
+
+          # Test basic functionality
+          gh actions-optimizer --help
+          gh actions-optimizer --version
+
+          # Test some commands with sample data
+          gh actions-optimizer analyze cost --sample-data
+          gh actions-optimizer analyze security --sample-data
+
+      - name: Create GitHub CLI extension bundle
+        run: |
+          # Create a distributable bundle for the extension
+          mkdir -p gh-cli-extension-bundle
+          cp -r gh_actions_optimizer/ gh-cli-extension-bundle/
+          cp gh-actions-optimizer gh-cli-extension-bundle/
+          cp extension.yml gh-cli-extension-bundle/
+          cp requirements.txt gh-cli-extension-bundle/
+          cp README.md gh-cli-extension-bundle/
+          cp LICENSE gh-cli-extension-bundle/
+
+          # Create tarball
+          tar -czf gh-actions-optimizer-extension.tar.gz gh-cli-extension-bundle/
+
+      - name: Upload GitHub CLI extension bundle
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: github-cli-extension-${{ github.sha }}
+          path: gh-actions-optimizer-extension.tar.gz
+          retention-days: 30
