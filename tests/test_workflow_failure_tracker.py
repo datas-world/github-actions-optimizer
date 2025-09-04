@@ -107,8 +107,9 @@ class TestWorkflowFailureTracker:
         """
         # Basic structure validation
         assert "name" in workflow_file
-        # 'on' keyword becomes True in YAML parsing due to PyYAML's implicit boolean conversion
-        # See: https://yaml.org/type/bool.html and https://pyyaml.org/wiki/PyYAMLDocumentation
+        # 'on' keyword becomes True in YAML parsing due to PyYAML's implicit
+        # boolean conversion. See: https://yaml.org/type/bool.html and
+        # https://pyyaml.org/wiki/PyYAMLDocumentation
         assert True in workflow_file or "on" in workflow_file
         assert "jobs" in workflow_file
 
@@ -251,11 +252,13 @@ class TestWorkflowFailureTracker:
 
         assert (
             create_issue_step.get("if")
-            == "steps.check-issue.outputs.issue_exists == 'false' && steps.workflow-details.outputs.workflow_name != ''"
+            == "steps.check-issue.outputs.issue_exists == 'false' && "
+            "steps.workflow-details.outputs.workflow_name != ''"
         )
         assert (
             update_issue_step.get("if")
-            == "steps.check-issue.outputs.issue_exists == 'true' && steps.workflow-details.outputs.workflow_name != ''"
+            == "steps.check-issue.outputs.issue_exists == 'true' && "
+            "steps.workflow-details.outputs.workflow_name != ''"
         )
 
     def test_workflow_outputs_are_properly_set(

@@ -206,6 +206,13 @@ jobs:
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: SonarCloud Scan
+        if: matrix.python-version == '3.13'
+        uses: SonarSource/sonarcloud-github-action@5875562561d22a34be0c4c2e5f44411b2d9aecaa # v3.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   build:
     name: Build Python Package
     runs-on: ubuntu-latest

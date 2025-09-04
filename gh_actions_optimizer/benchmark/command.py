@@ -52,12 +52,14 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
             f"Total Workflow Runs: {benchmark_data['metrics']['total_workflow_runs']}"
         )
         print(
-            f"Average Duration: {benchmark_data['metrics']['average_duration_minutes']} min"
+            f"Average Duration: "
+            f"{benchmark_data['metrics']['average_duration_minutes']} min"
         )
         print(
-            f"Estimated Monthly Cost: ${benchmark_data['metrics']['estimated_monthly_cost']}"
+            f"Estimated Monthly Cost: "
+            f"${benchmark_data['metrics']['estimated_monthly_cost']}"
         )
-        print(f"Success Rate: {benchmark_data['metrics']['success_rate']*100:.1f}%")
+        print(f"Success Rate: {benchmark_data['metrics']['success_rate'] * 100:.1f}%")
         print(f"\n{Colors.BLUE}Optimization Potential:{Colors.NC}")
         print(f"  {benchmark_data['metrics']['optimization_potential']}")
 

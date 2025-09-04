@@ -30,6 +30,13 @@ repos:
         files: '^gh_actions_optimizer/.*\.py$'
         types: [python]
 
+      - id: sort-properties
+        name: sort-properties-files
+        entry: python scripts/sort_properties.py
+        language: system
+        files: '\.properties$'
+        description: Sort Java-style properties files by key
+
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
     hooks:
