@@ -51,6 +51,8 @@ jobs:
           pip install pre-commit
           # Install additional dependencies for pre-commit hooks
           pip install black isort flake8 mypy bandit pydocstyle types-PyYAML pytest rich
+          # Install security scanning tools
+          pip install pip-audit safety detect-secrets
 
       - name: Install system dependencies
         run: |
@@ -67,6 +69,38 @@ jobs:
       - name: Run mypy separately (workaround for pre-commit network issues)
         run: |
           mypy --strict gh_actions_optimizer/
+
+      - name: Run security scans (fail on issues)
+        run: |
+          echo "🔍 Running comprehensive security scans..."
+          
+          # Bandit security scan (fail on HIGH severity issues)
+          echo "Running bandit security scan..."
+          bandit -r gh_actions_optimizer/ --format json --severity-level high --exit-zero > bandit-report.json
+          if [ -s bandit-report.json ] && [ "$(jq '.results | length' bandit-report.json)" -gt 0 ]; then
+            echo "❌ High severity security issues found by bandit!"
+            jq '.results[] | "File: \(.filename), Line: \(.line_number), Issue: \(.issue_text)"' bandit-report.json
+            exit 1
+          fi
+          
+          # Dependency vulnerability scan with pip-audit
+          echo "Running pip-audit dependency scan..."
+          pip-audit --desc --strict --format json > pip-audit-report.json || {
+            echo "❌ Vulnerabilities found in dependencies!"
+            cat pip-audit-report.json
+            exit 1
+          }
+          
+          # Secret detection scan
+          echo "Running detect-secrets scan..."
+          detect-secrets scan --exclude-files '\.git/' --exclude-files '\.mypy_cache/' --exclude-files '__pycache__/' . > current-secrets.json
+          if [ "$(jq '.results | length' current-secrets.json)" -gt 0 ]; then
+            echo "❌ Secrets detected in codebase!"
+            jq '.results' current-secrets.json
+            exit 1
+          fi
+          
+          echo "✅ All security scans passed!"
 
       - name: Auto-update pre-commit hooks (scheduled only)
         if: github.event_name == 'schedule' && github.event.schedule == '0 4 * * 1'
