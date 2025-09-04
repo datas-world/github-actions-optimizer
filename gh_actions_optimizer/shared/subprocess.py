@@ -15,12 +15,14 @@ from .cli import log_error, log_info, log_warn
 
 
 # Patterns for detecting sensitive data that should not be logged
+# Note: These patterns are designed to be ReDoS-safe by avoiding nested quantifiers
+# and using possessive quantifiers where possible
 SENSITIVE_PATTERNS: List[Pattern[str]] = [
-    re.compile(r"token[=:\s]+[a-zA-Z0-9_-]+", re.IGNORECASE),
+    re.compile(r"token[=:\s][a-zA-Z0-9_-]+", re.IGNORECASE),
     re.compile(r"gh[psu]_[a-zA-Z0-9_-]+", re.IGNORECASE),  # GitHub tokens
-    re.compile(r"password[=:\s]+\S+", re.IGNORECASE),
-    re.compile(r"secret[=:\s]+\S+", re.IGNORECASE),
-    re.compile(r"key[=:\s]+[a-zA-Z0-9_/-]+", re.IGNORECASE),
+    re.compile(r"password[=:\s]\S+", re.IGNORECASE),
+    re.compile(r"secret[=:\s]\S+", re.IGNORECASE),
+    re.compile(r"key[=:\s][a-zA-Z0-9_/-]+", re.IGNORECASE),
 ]
 
 # Allowed commands - whitelist approach for extra security

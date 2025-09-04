@@ -3,12 +3,13 @@
 import argparse
 import json
 import os
+import subprocess
 import sys
 import urllib.request
 from typing import Any, Dict, List, Optional, cast
 
 from .cli import log_error, log_info
-from .subprocess import safe_gh_command, safe_git_command
+from .subprocess import SubprocessSecurityError, safe_gh_command, safe_git_command
 
 
 def get_current_repo() -> Optional[str]:
@@ -30,9 +31,13 @@ def get_current_repo() -> Optional[str]:
         if repo_raw and isinstance(repo_raw, str):
             log_info(f"Using gh CLI detected repository: {repo_raw}")
             return cast(str, repo_raw)
+    except SubprocessSecurityError:
+        # Re-raise security errors - do not suppress them
+        raise
     except Exception:
-        # Catch all exceptions including our security errors
-        pass
+        # Expected errors when gh CLI is not available or not in a repository
+        # This includes CalledProcessError, TimeoutExpired, JSONDecodeError, etc.
+        log_info("gh CLI repository detection failed, trying git remote")
 
     try:
         # Fallback to git remote
@@ -50,9 +55,13 @@ def get_current_repo() -> Optional[str]:
                 repo = f"{parts[0]}/{parts[1]}"
                 log_info(f"Using git remote detected repository: {repo}")
                 return repo
+    except SubprocessSecurityError:
+        # Re-raise security errors - do not suppress them
+        raise
     except Exception:
-        # Catch all exceptions including our security errors
-        pass
+        # Expected errors when git is not available or not in a repository
+        # This includes CalledProcessError, TimeoutExpired, etc.
+        log_info("git remote repository detection failed")
 
     return None
 
