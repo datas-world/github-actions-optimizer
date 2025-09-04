@@ -215,7 +215,8 @@ jobs:
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0'
+    # Skip on PRs to avoid extension pack issues, only run on main branch pushes
+    if: (github.event_name != 'schedule' || github.event.schedule == '0 3 * * 0') && github.event_name != 'pull_request'
 
     strategy:
       fail-fast: false
@@ -238,9 +239,11 @@ jobs:
           config: |
             disable-default-path-filters: true
         env:
-          # Completely disable PR diff analysis and extension packs
+          # Completely disable PR diff analysis and extension packs - multiple flags
           CODEQL_ACTION_FEATURE_ANALYSIS_FILTER: false
           CODEQL_ACTION_FEATURE_WILL_UPLOAD: true
+          CODEQL_DISABLE_EXTENSION_PACK: true
+          CODEQL_DISABLE_PR_DIFF_RANGE: true
 
       - name: Set up Python
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
