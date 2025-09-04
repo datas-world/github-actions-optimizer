@@ -27,17 +27,46 @@ def cmd_generate_workflow_patch(args: argparse.Namespace) -> None:
             },
         },
         "caching": {
-            "description": "Add dependency caching",
+            "description": "Add dependency caching with SHA-pinned actions",
+            "description_de": "Abhängigkeiten-Caching mit SHA-fixierten Actions hinzufügen",
             "patch": {
                 "steps": [
                     {
-                        "name": "Cache dependencies",
-                        "uses": "actions/cache@v4",
+                        "name": "Cache Python dependencies",
+                        "uses": "actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809",  # v4.2.4
                         "with": {
                             "path": "~/.cache/pip",
-                            "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}",
+                            "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}",
+                            "restore-keys": "|\\n${{ runner.os }}-pip-",
+                        },
+                    },
+                    {
+                        "name": "Cache pre-commit environments",
+                        "uses": "actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809",  # v4.2.4
+                        "with": {
+                            "path": "~/.cache/pre-commit",
+                            "key": "${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}",
+                            "restore-keys": "|\\n${{ runner.os }}-pre-commit-",
                         },
                     }
+                ]
+            },
+        },
+        "security_notes": {
+            "description": "Security considerations for caching",
+            "description_de": "Sicherheitsüberlegungen für Caching",
+            "patch": {
+                "notes": [
+                    "Always use SHA-pinned actions (e.g., actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809)",
+                    "Include file hashes in cache keys to prevent cache poisoning",
+                    "Use different cache keys for different jobs to avoid conflicts",
+                    "Never cache sensitive data like secrets or private keys"
+                ],
+                "notes_de": [
+                    "Verwenden Sie immer SHA-fixierte Actions (z.B. actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809)",
+                    "Datei-Hashes in Cache-Keys einschließen, um Cache-Poisoning zu verhindern",
+                    "Verschiedene Cache-Keys für verschiedene Jobs verwenden, um Konflikte zu vermeiden",
+                    "Niemals sensible Daten wie Geheimnisse oder private Schlüssel cachen"
                 ]
             },
         },
