@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
 
