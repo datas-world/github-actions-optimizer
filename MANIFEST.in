@@ -1,0 +1,18 @@
+include README.md
+include LICENSE
+include LICENSE_COMPATIBILITY.md
+include GITHUB_CLI_BEST_PRACTICES.md
+include requirements.txt
+include extension.yml
+include gh-actions-optimizer
+
+recursive-include gh_actions_optimizer *.py
+recursive-include docs *.md
+
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .github*
+global-exclude .pre-commit-config.yaml
+global-exclude *.backup
+global-exclude *.original
